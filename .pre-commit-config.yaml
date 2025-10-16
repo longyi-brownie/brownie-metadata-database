@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: integration-tests
+        name: Run integration tests
+        entry: pytest tests/test_integration.py -v
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+        
+      - id: migration-test
+        name: Test migration compatibility
+        entry: pytest tests/test_integration.py::TestMigrationCompatibility -v
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]

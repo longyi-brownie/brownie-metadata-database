@@ -86,6 +86,10 @@ docker exec -it brownie-metadata-postgres psql -U brownie -d brownie_metadata
 docker-compose exec postgres psql -U brownie -d brownie_metadata
 ```
 
+### Runbooks
+
+- [Coordinating DB Schema Changes with the Metadata API](docs/RUNBOOK-db-api-changes.md)
+
 **Kubernetes:**
 ```bash
 # Get pod name
@@ -366,7 +370,37 @@ pytest --cov=src --cov-report=html
 
 # Run specific test file
 pytest tests/test_models.py
+
+# Run integration tests (API compatibility)
+pytest tests/test_integration.py -v
 ```
+
+### Integration Testing
+
+**IMPORTANT**: Before making database schema changes, run integration tests to ensure the API doesn't break:
+
+```bash
+# Run integration tests to check API compatibility
+pytest tests/test_integration.py::TestDatabaseAPIIntegration -v
+
+# Run migration compatibility tests
+pytest tests/test_integration.py::TestMigrationCompatibility -v
+```
+
+**What Integration Tests Check:**
+- ✅ Database migrations can be applied successfully
+- ✅ API can import all database models
+- ✅ API can connect to the database
+- ✅ API can query all tables
+- ✅ API can create records in all tables
+- ✅ API schemas match database models
+- ✅ Migration creates all expected tables and indexes
+
+**When to Run Integration Tests:**
+- Before merging database changes
+- After creating new migrations
+- Before deploying to production
+- When the API project is updated
 
 ## Monitoring
 
