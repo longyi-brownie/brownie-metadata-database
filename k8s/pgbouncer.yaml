@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: brownie-metadata
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      containers:
+      - name: pgbouncer
+        image: pgbouncer/pgbouncer:latest
+        ports:
+        - containerPort: 6432
+        env:
+        - name: DATABASES_HOST
+          value: "postgres-primary"
+        - name: DATABASES_PORT
+          value: "5432"
+        - name: DATABASES_USER
+          value: "brownie"
+        - name: DATABASES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: brownie-metadata-secrets
+              key: postgres-password
+        - name: DATABASES_DBNAME
+          value: "brownie_metadata"
+        - name: POOL_MODE
+          value: "transaction"
+        - name: MAX_CLIENT_CONN
+          value: "1000"
+        - name: DEFAULT_POOL_SIZE
+          value: "25"
+        - name: MIN_POOL_SIZE
+          value: "5"
+        - name: RESERVE_POOL_SIZE
+          value: "5"
+        - name: RESERVE_POOL_TIMEOUT
+          value: "5"
+        - name: MAX_DB_CONNECTIONS
+          value: "100"
+        - name: MAX_CLIENT_CONNECTIONS
+          value: "1000"
+        - name: SERVER_RESET_QUERY
+          value: "DISCARD ALL"
+        - name: IGNORE_STARTUP_PARAMETERS
+          value: "extra_float_digits"
+        volumeMounts:
+        - name: pgbouncer-config
+          mountPath: /etc/pgbouncer
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 6432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: pgbouncer-config
+        configMap:
+          name: pgbouncer-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: brownie-metadata
+spec:
+  selector:
+    app: pgbouncer
+  ports:
+  - port: 6432
+    targetPort: 6432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: brownie-metadata
+data:
+  pgbouncer.ini: |
+    [databases]
+    brownie_metadata = host=postgres-primary port=5432 dbname=brownie_metadata user=brownie password=brownie
+    
+    [pgbouncer]
+    listen_port = 6432
+    listen_addr = 0.0.0.0
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    max_client_conn = 1000
+    default_pool_size = 25
+    min_pool_size = 5
+    reserve_pool_size = 5
+    reserve_pool_timeout = 5
+    max_db_connections = 100
+    max_user_connections = 1000
+    server_reset_query = DISCARD ALL
+    ignore_startup_parameters = extra_float_digits
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+    
+  userlist.txt: |
+    "brownie" "md5$(echo -n 'browniebrownie' | md5sum | cut -d' ' -f1)"

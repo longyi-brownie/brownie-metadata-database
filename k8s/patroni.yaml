@@ -1,0 +1,279 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: patroni
+  namespace: brownie-metadata
+spec:
+  serviceName: patroni
+  replicas: 3  # 1 primary + 2 replicas
+  selector:
+    matchLabels:
+      app: patroni
+  template:
+    metadata:
+      labels:
+        app: patroni
+    spec:
+      containers:
+      - name: patroni
+        image: postgres:16-alpine
+        ports:
+        - containerPort: 5432
+        - containerPort: 8008  # Patroni REST API
+        env:
+        - name: PATRONI_KUBERNETES_NAMESPACE
+          value: "brownie-metadata"
+        - name: PATRONI_KUBERNETES_LABELS
+          value: "{app: patroni}"
+        - name: PATRONI_SUPERUSER_USERNAME
+          value: "postgres"
+        - name: PATRONI_SUPERUSER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: brownie-metadata-secrets
+              key: postgres-password
+        - name: PATRONI_REPLICATION_USERNAME
+          value: "replicator"
+        - name: PATRONI_REPLICATION_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: brownie-metadata-secrets
+              key: postgres-replication-password
+        - name: PATRONI_POSTGRESQL_DATA_DIR
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: PATRONI_POSTGRESQL_PGPASS
+          value: "/tmp/pgpass"
+        - name: PATRONI_RESTAPI_LISTEN
+          value: "0.0.0.0:8008"
+        - name: PATRONI_RESTAPI_CONNECT_ADDRESS
+          value: "$(POD_IP):8008"
+        - name: PATRONI_POSTGRESQL_LISTEN
+          value: "0.0.0.0:5432"
+        - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
+          value: "$(POD_IP):5432"
+        - name: PATRONI_POSTGRESQL_DATA_DIR
+          value: "/var/lib/postgresql/data/pgdata"
+        - name: PATRONI_SCOPE
+          value: "brownie-metadata"
+        - name: PATRONI_POSTGRESQL_PARAMETERS
+          value: |
+            max_connections: 100
+            max_worker_processes: 8
+            max_parallel_workers_per_gather: 4
+            max_parallel_workers: 8
+            max_parallel_maintenance_workers: 4
+            shared_preload_libraries: "pg_stat_statements"
+            track_activity_query_size: 2048
+            pg_stat_statements.track: all
+            pg_stat_statements.max: 10000
+            log_destination: "stderr"
+            logging_collector: on
+            log_directory: "/var/log/postgresql"
+            log_filename: "postgresql-%Y-%m-%d_%H%M%S.log"
+            log_rotation_age: 1d
+            log_rotation_size: 0
+            log_min_duration_statement: 10
+            log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+            log_checkpoints: on
+            log_connections: on
+            log_disconnections: on
+            log_lock_waits: on
+            log_temp_files: 0
+            log_autovacuum_min_duration: 0
+            log_error_verbosity: default
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+          # Install Patroni
+          apk add --no-cache python3 py3-pip postgresql-dev gcc musl-dev
+          pip3 install patroni[kubernetes]
+          
+          # Create pgpass file
+          echo "*:*:*:postgres:$(PATRONI_SUPERUSER_PASSWORD)" > /tmp/pgpass
+          echo "*:*:*:replicator:$(PATRONI_REPLICATION_PASSWORD)" >> /tmp/pgpass
+          chmod 600 /tmp/pgpass
+          
+          # Start Patroni
+          patroni /etc/patroni.yml
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        - name: patroni-config
+          mountPath: /etc/patroni.yml
+          subPath: patroni.yml
+        - name: postgres-logs
+          mountPath: /var/log/postgresql
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /master
+            port: 8008
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /master
+            port: 8008
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: patroni-config
+        configMap:
+          name: patroni-config
+      - name: postgres-logs
+        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+      storageClassName: "fast-ssd"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: patroni
+  namespace: brownie-metadata
+spec:
+  selector:
+    app: patroni
+  ports:
+  - port: 5432
+    targetPort: 5432
+    name: postgres
+  - port: 8008
+    targetPort: 8008
+    name: patroni-api
+  type: ClusterIP
+
+---
+# Service for reads (replicas)
+apiVersion: v1
+kind: Service
+metadata:
+  name: patroni-replicas
+  namespace: brownie-metadata
+spec:
+  selector:
+    app: patroni
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patroni-config
+  namespace: brownie-metadata
+data:
+  patroni.yml: |
+    kubernetes:
+      namespace: brownie-metadata
+      labels:
+        app: patroni
+      use_endpoints: true
+      pod_ip: ${POD_IP}
+      ports:
+      - name: postgres
+        port: 5432
+      - name: patroni
+        port: 8008
+    
+    restapi:
+      listen: 0.0.0.0:8008
+      connect_address: ${POD_IP}:8008
+    
+    postgresql:
+      listen: 0.0.0.0:5432
+      connect_address: ${POD_IP}:5432
+      data_dir: /var/lib/postgresql/data/pgdata
+      pgpass: /tmp/pgpass
+      parameters:
+        max_connections: 100
+        max_worker_processes: 8
+        max_parallel_workers_per_gather: 4
+        max_parallel_workers: 8
+        max_parallel_maintenance_workers: 4
+        shared_preload_libraries: "pg_stat_statements"
+        track_activity_query_size: 2048
+        pg_stat_statements.track: all
+        pg_stat_statements.max: 10000
+        log_destination: "stderr"
+        logging_collector: on
+        log_directory: "/var/log/postgresql"
+        log_filename: "postgresql-%Y-%m-%d_%H%M%S.log"
+        log_rotation_age: 1d
+        log_rotation_size: 0
+        log_min_duration_statement: 10
+        log_line_prefix: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h "
+        log_checkpoints: on
+        log_connections: on
+        log_disconnections: on
+        log_lock_waits: on
+        log_temp_files: 0
+        log_autovacuum_min_duration: 0
+        log_error_verbosity: default
+      recovery_conf:
+        restore_command: ""
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        wal_level: replica
+        hot_standby: "on"
+        wal_keep_segments: 8
+        max_wal_senders: 10
+        max_replication_slots: 10
+        wal_log_hints: "on"
+    
+    bootstrap:
+      dcs:
+        ttl: 30
+        loop_wait: 10
+        retry_timeout: 10
+        maximum_lag_on_failover: 1048576
+        postgresql:
+          use_pg_rewind: true
+          use_slots: true
+          parameters:
+            wal_level: replica
+            hot_standby: "on"
+            wal_keep_segments: 8
+            max_wal_senders: 10
+            max_replication_slots: 10
+            wal_log_hints: "on"
+      initdb:
+      - encoding: UTF8
+      - data-checksums
+      - pg_hba.conf: |
+          local all all trust
+          host all all 0.0.0.0/0 md5
+          host replication replicator 0.0.0.0/0 md5
+      post_bootstrap: |
+        CREATE USER replicator WITH REPLICATION ENCRYPTED PASSWORD 'replicator_password';
+        GRANT CONNECT ON DATABASE postgres TO replicator;
+        GRANT USAGE ON SCHEMA public TO replicator;
+        GRANT SELECT ON ALL TABLES IN SCHEMA public TO replicator;
+      users:
+        postgres:
+          password: ${PATRONI_SUPERUSER_PASSWORD}
+          options:
+            - createrole
+            - createdb
