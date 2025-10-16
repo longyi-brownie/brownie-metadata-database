@@ -36,6 +36,170 @@ Enterprise-ready, containerized database service for Brownie incident assistant.
 - **Kubernetes**: Kubernetes cluster (1.20+) and kubectl
 - **Local Development**: Python 3.12+
 
+## Database Operations
+
+### When to Run Migrations
+
+Run `python3 -m alembic upgrade head` in these scenarios:
+
+- **After pulling code changes** that include new migrations
+- **Before starting the application** for the first time
+- **After creating new models** or modifying existing ones
+- **When deploying to a new environment**
+- **After switching branches** that have different schema versions
+
+### Migration Commands
+
+```bash
+# Apply all pending migrations
+python3 -m alembic upgrade head
+
+# Apply migrations up to a specific revision
+python3 -m alembic upgrade <revision_id>
+
+# Rollback to previous migration
+python3 -m alembic downgrade -1
+
+# Rollback to base (empty database)
+python3 -m alembic downgrade base
+
+# Check current migration status
+python3 -m alembic current
+
+# Show migration history
+python3 -m alembic history
+
+# Create a new migration (after model changes)
+python3 -m alembic revision --autogenerate -m "Description of changes"
+```
+
+### Database Access & Debugging
+
+#### Connect to PostgreSQL Console
+
+**Docker Compose:**
+```bash
+# Connect to the database
+docker exec -it brownie-metadata-postgres psql -U brownie -d brownie_metadata
+
+# Or using docker-compose
+docker-compose exec postgres psql -U brownie -d brownie_metadata
+```
+
+**Kubernetes:**
+```bash
+# Get pod name
+kubectl get pods -n brownie-metadata
+
+# Connect to database
+kubectl exec -it <postgres-pod-name> -n brownie-metadata -- psql -U brownie -d brownie_metadata
+```
+
+#### Useful PostgreSQL Commands
+
+```sql
+-- List all tables
+\dt
+
+-- Describe table structure
+\d table_name
+
+-- List all databases
+\l
+
+-- List all schemas
+\dn
+
+-- List all users/roles
+\du
+
+-- Show current database
+SELECT current_database();
+
+-- Show current user
+SELECT current_user;
+
+-- Exit psql
+\q
+```
+
+#### Debugging Queries
+
+```sql
+-- Check table contents
+SELECT * FROM organizations LIMIT 5;
+SELECT * FROM teams LIMIT 5;
+SELECT * FROM users LIMIT 5;
+SELECT * FROM incidents LIMIT 5;
+SELECT * FROM configs LIMIT 5;
+
+-- Check table sizes
+SELECT 
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+FROM pg_tables 
+WHERE schemaname = 'public'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- Check active connections
+SELECT * FROM pg_stat_activity WHERE state = 'active';
+
+-- Check slow queries
+SELECT query, mean_time, calls 
+FROM pg_stat_statements 
+ORDER BY mean_time DESC 
+LIMIT 10;
+```
+
+### Common Troubleshooting
+
+#### Migration Issues
+
+**Problem**: `type "userrole" already exists`
+```bash
+# Solution: Drop existing types and re-run migration
+docker exec brownie-metadata-postgres psql -U brownie -d brownie_metadata -c "DROP TYPE IF EXISTS userrole CASCADE; DROP TYPE IF EXISTS incidentstatus CASCADE; DROP TYPE IF EXISTS incidentpriority CASCADE; DROP TYPE IF EXISTS agenttype CASCADE; DROP TYPE IF EXISTS configtype CASCADE; DROP TYPE IF EXISTS configstatus CASCADE;"
+python3 -m alembic upgrade head
+```
+
+**Problem**: `connection to server at "localhost" (::1), port 5432 failed: Connection refused`
+```bash
+# Solution: Start PostgreSQL container
+docker-compose up -d postgres
+# Wait a few seconds for startup, then run migration
+python3 -m alembic upgrade head
+```
+
+**Problem**: `Attribute name 'metadata' is reserved when using the Declarative API`
+```bash
+# Solution: Rename 'metadata' column to 'config_metadata' in your models
+# This is already fixed in the current codebase
+```
+
+#### Database Connection Issues
+
+**Problem**: Can't connect to database
+```bash
+# Check if container is running
+docker ps | grep postgres
+
+# Check container logs
+docker logs brownie-metadata-postgres
+
+# Restart container
+docker-compose restart postgres
+```
+
+**Problem**: Database is locked or slow
+```bash
+# Check active connections
+docker exec brownie-metadata-postgres psql -U brownie -d brownie_metadata -c "SELECT * FROM pg_stat_activity WHERE state = 'active';"
+
+# Kill long-running queries (if needed)
+docker exec brownie-metadata-postgres psql -U brownie -d brownie_metadata -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE state = 'active' AND pid <> pg_backend_pid();"
+```
+
 ### Option 1: Docker Compose (Development)
 
 1. Clone the repository:
