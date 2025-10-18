@@ -47,6 +47,43 @@ graph TB
 - Docker and Docker Compose (for local development)
 - Kubernetes cluster (for production)
 - PostgreSQL client tools (for database access)
+- OpenSSL (for certificate generation)
+
+### Certificate Setup
+- The DB authenticates with cient certificates only (no passwords)
+**Development (Local Certificates):**
+```bash
+# Generate development certificates (gitignored)
+./scripts/setup-dev-certs.sh
+
+# Set environment variable
+export LOCAL_CERT_DIR=dev-certs
+
+# For Kubernetes, create secret from files (NOT in git!)
+kubectl create secret generic brownie-metadata-secrets \
+  --from-file=database-client-cert=dev-certs/client.crt \
+  --from-file=database-client-key=dev-certs/client.key \
+  --from-file=database-ca-cert=dev-certs/ca.crt
+```
+
+**Production (Vault Integration):**
+```bash
+# Install Vault support
+pip install -e ".[vault]"
+
+# Configure Vault environment
+export VAULT_ENABLED=true
+export VAULT_URL=https://vault.company.com
+export VAULT_TOKEN=your-vault-token
+
+# No Kubernetes secrets needed - certificates loaded from Vault
+```
+
+**⚠️ Security Notes:**
+- Certificates are automatically excluded from git (`.gitignore`)
+- Never commit certificates to version control
+- Use Vault for production certificate management
+- Development certificates are for testing only
 
 ## Configuration
 
@@ -58,7 +95,23 @@ DB_HOST=postgres
 DB_PORT=5432
 DB_NAME=brownie_metadata
 DB_USER=brownie
-DB_PASSWORD=brownie
+DB_SSL_MODE=require
+DB_SSL_CERT=/certs/client.crt
+DB_SSL_KEY=/certs/client.key
+DB_SSL_ROOTCERT=/certs/ca.crt
+```
+
+
+**Certificate Management:**
+```bash
+# For development (local certificates)
+LOCAL_CERT_DIR=dev-certs
+
+# For production (Vault integration)
+VAULT_ENABLED=true
+VAULT_URL=https://vault.company.com
+VAULT_TOKEN=your-vault-token
+VAULT_CERT_PATH=secret/brownie-metadata/certs
 ```
 
 **Backup Configuration:**
@@ -85,10 +138,14 @@ kind: ConfigMap
 metadata:
   name: brownie-metadata-config
 data:
+  # Database configuration
   DB_HOST: "postgres"
   DB_PORT: "5432"
   DB_NAME: "brownie_metadata"
   DB_USER: "brownie"
+  DB_SSL_MODE: "require"
+  
+  # Application configuration
   LOG_LEVEL: "INFO"
   METRICS_ENABLED: "true"
 ```
@@ -101,9 +158,22 @@ metadata:
   name: brownie-metadata-secrets
 type: Opaque
 data:
-  postgres-password: <base64-encoded-password>
-  backup-access-key: <base64-encoded-key>
-  backup-secret-key: <base64-encoded-key>
+  # These are placeholders - certificates loaded from Vault or local files
+  database-client-cert: "PLACEHOLDER_DO_NOT_USE"
+  database-client-key: "PLACEHOLDER_DO_NOT_USE"
+  database-ca-cert: "PLACEHOLDER_DO_NOT_USE"
+```
+
+**Proper Secret Management:**
+```bash
+# Option 1: Create from local files (development)
+kubectl create secret generic brownie-metadata-secrets \
+  --from-file=database-client-cert=dev-certs/client.crt \
+  --from-file=database-client-key=dev-certs/client.key \
+  --from-file=database-ca-cert=dev-certs/ca.crt
+
+# Option 2: Use Vault (production)
+# Certificates automatically loaded from Vault via CertificateManager
 ```
 
 ### Docker Compose (Development)

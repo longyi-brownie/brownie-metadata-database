@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 
 from .config import DatabaseSettings
+from ..certificates import cert_manager
 
 logger = structlog.get_logger(__name__)
 
@@ -24,8 +25,23 @@ class DatabaseManager:
         if self._engine is not None:
             return self._engine
         
+        # Get SSL configuration from certificate manager
+        ssl_config = cert_manager.get_database_ssl_config()
+        
+        # Build database URL with SSL parameters
+        database_url = self.settings.database_url
+        if ssl_config.get("sslmode") == "require":
+            # Add SSL parameters to connection string
+            ssl_params = []
+            for key, value in ssl_config.items():
+                ssl_params.append(f"{key}={value}")
+            
+            if ssl_params:
+                separator = "&" if "?" in database_url else "?"
+                database_url += f"{separator}{'&'.join(ssl_params)}"
+        
         engine = create_engine(
-            self.settings.database_url,
+            database_url,
             poolclass=QueuePool,
             pool_size=self.settings.pool_size,
             max_overflow=self.settings.max_overflow,

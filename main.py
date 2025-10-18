@@ -57,7 +57,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Add backup API router
+# Add API routers
 backup_config = BackupConfig.from_env()
 backup_router = create_backup_router(backup_config)
 app.include_router(backup_router)
@@ -79,6 +79,16 @@ async def metrics():
 @app.get("/")
 async def root():
     """Root endpoint."""
+    return {
+        "service": "Brownie Metadata Database",
+        "version": "0.1.0",
+        "status": "running"
+    }
+
+
+@app.get("/api/status")
+async def api_status():
+    """API status endpoint."""
     return {
         "service": "Brownie Metadata Database",
         "version": "0.1.0",

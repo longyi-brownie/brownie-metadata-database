@@ -44,6 +44,9 @@ dev = [
     "mypy>=1.7.0",
     "pre-commit>=3.5.0",
 ]
+vault = [
+    "hvac>=1.0.0",
+]
 
 [tool.black]
 line-length = 88
