@@ -1,0 +1,233 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-config
+  namespace: brownie-metadata
+data:
+  backup-config.yaml: |
+    # Backup configuration
+    provider: "s3"  # s3, gcs, azure, local
+    destination: "brownie-backups/database"  # S3 bucket/path, GCS bucket/path, etc.
+    schedule: "0 2 * * *"  # Daily at 2 AM (cron format)
+    retention_days: 30
+    compression: true
+    encryption: true
+    parallel_jobs: 2
+    backup_timeout: 3600
+    verify_backup: true
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: backup-credentials
+  namespace: brownie-metadata
+type: Opaque
+data:
+  # Base64 encoded credentials
+  # For S3: access_key and secret_key
+  # For GCS: service_account_key.json
+  # For Azure: account_name and account_key
+  access_key: ""  # echo -n "your-access-key" | base64
+  secret_key: ""  # echo -n "your-secret-key" | base64
+  token: ""       # echo -n '{"type": "service_account", ...}' | base64
+  region: ""      # echo -n "us-east-1" | base64
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-job
+  namespace: brownie-metadata
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: brownie-metadata-db:latest
+            command: ["python", "-m", "src.backup.cli", "backup"]
+            env:
+            - name: BACKUP_PROVIDER
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: provider
+            - name: BACKUP_DESTINATION
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: destination
+            - name: BACKUP_SCHEDULE
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: schedule
+            - name: BACKUP_RETENTION_DAYS
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: retention_days
+            - name: BACKUP_COMPRESSION
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: compression
+            - name: BACKUP_ENCRYPTION
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: encryption
+            - name: BACKUP_PARALLEL_JOBS
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: parallel_jobs
+            - name: BACKUP_TIMEOUT
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: backup_timeout
+            - name: BACKUP_VERIFY
+              valueFrom:
+                configMapKeyRef:
+                  name: backup-config
+                  key: verify_backup
+            - name: BACKUP_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backup-credentials
+                  key: access_key
+            - name: BACKUP_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: backup-credentials
+                  key: secret_key
+            - name: BACKUP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: backup-credentials
+                  key: token
+            - name: BACKUP_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: backup-credentials
+                  key: region
+            - name: DB_HOST
+              value: "postgres"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "brownie_metadata"
+            - name: DB_USER
+              value: "brownie"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: brownie-metadata-secrets
+                  key: postgres-password
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          volumes:
+          - name: backup-storage
+            emptyDir: {}
+          restartPolicy: OnFailure
+
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: backup-cleanup-job
+  namespace: brownie-metadata
+spec:
+  template:
+    spec:
+      containers:
+      - name: cleanup
+        image: brownie-metadata-db:latest
+        command: ["python", "-m", "src.backup.cli", "cleanup"]
+        env:
+        - name: BACKUP_PROVIDER
+          valueFrom:
+            configMapKeyRef:
+              name: backup-config
+              key: provider
+        - name: BACKUP_DESTINATION
+          valueFrom:
+            configMapKeyRef:
+              name: backup-config
+              key: destination
+        - name: BACKUP_RETENTION_DAYS
+          valueFrom:
+            configMapKeyRef:
+              name: backup-config
+              key: retention_days
+        - name: BACKUP_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: backup-credentials
+              key: access_key
+        - name: BACKUP_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: backup-credentials
+              key: secret_key
+        - name: BACKUP_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: backup-credentials
+              key: token
+        - name: BACKUP_REGION
+          valueFrom:
+            secretKeyRef:
+              name: backup-credentials
+              key: region
+        - name: DB_HOST
+          value: "postgres"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "brownie_metadata"
+        - name: DB_USER
+          value: "brownie"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: brownie-metadata-secrets
+              key: postgres-password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "200m"
+      restartPolicy: OnFailure
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backup-service
+  namespace: brownie-metadata
+spec:
+  selector:
+    app: brownie-metadata-app
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  type: ClusterIP

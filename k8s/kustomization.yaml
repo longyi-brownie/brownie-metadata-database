@@ -13,6 +13,7 @@ resources:
   - app.yaml
   - monitoring.yaml
   - alerting.yaml
+  - backup.yaml
 
 images:
   - name: brownie-metadata-db

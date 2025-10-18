@@ -400,6 +400,196 @@ curl http://localhost:9093/api/v1/alerts
 - Custom webhook endpoints
 - Third-party monitoring tools
 
+## Enterprise Backup & Disaster Recovery
+
+The Brownie Metadata Database includes a comprehensive, enterprise-ready backup system that works out of the box with minimal configuration.
+
+### 🚀 Quick Start
+
+**1. Configure Backup Settings**
+```bash
+# Basic configuration
+export BACKUP_PROVIDER="s3"  # s3, gcs, azure, local
+export BACKUP_DESTINATION="my-backup-bucket/database"
+export BACKUP_SCHEDULE="0 2 * * *"  # Daily at 2 AM
+export BACKUP_RETENTION_DAYS="30"
+
+# Cloud provider credentials
+export BACKUP_ACCESS_KEY="your-access-key"
+export BACKUP_SECRET_KEY="your-secret-key"
+export BACKUP_REGION="us-east-1"
+```
+
+**2. Start Backup Service**
+```bash
+# Docker Compose
+docker compose up -d
+
+# Kubernetes
+kubectl apply -f k8s/backup.yaml
+```
+
+**3. Create First Backup**
+```bash
+# Via API
+curl -X POST http://localhost:8000/backup/create
+
+# Via CLI
+python -m src.backup.cli backup
+```
+
+### 📋 Supported Providers
+
+| Provider | Configuration | Features |
+|----------|---------------|----------|
+| **AWS S3** | Access key + Secret key | Encryption, Lifecycle, Cross-region |
+| **Google Cloud Storage** | Service account JSON | Encryption, Lifecycle, Multi-region |
+| **Azure Blob Storage** | Account name + Key | Encryption, Lifecycle, Geo-redundancy |
+| **Local Filesystem** | Directory path | Compression, Encryption |
+
+### 🔧 API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/backup/status` | GET | Get backup system status |
+| `/backup/create` | POST | Create a new backup |
+| `/backup/restore` | POST | Restore a backup |
+| `/backup/list` | GET | List available backups |
+| `/backup/{name}` | DELETE | Delete a backup |
+| `/backup/cleanup` | POST | Clean up old backups |
+| `/backup/run-now` | POST | Run backup immediately |
+
+### 🖥️ Command Line Interface
+
+```bash
+# Create backup
+python -m src.backup.cli backup --name "my-backup"
+
+# List backups
+python -m src.backup.cli list
+
+# Restore backup
+python -m src.backup.cli restore my-backup --target-db brownie_metadata
+
+# Delete backup
+python -m src.backup.cli delete my-backup
+
+# Clean up old backups
+python -m src.backup.cli cleanup
+
+# Show status
+python -m src.backup.cli status
+```
+
+### ⏰ Automated Scheduling
+
+**Cron Schedule Format**
+```bash
+# Daily at 2 AM
+export BACKUP_SCHEDULE="0 2 * * *"
+
+# Every 6 hours
+export BACKUP_SCHEDULE="0 */6 * * *"
+
+# Weekly on Sunday at 2 AM
+export BACKUP_SCHEDULE="0 2 * * 0"
+
+# Monthly on 1st at 2 AM
+export BACKUP_SCHEDULE="0 2 1 * *"
+```
+
+**Kubernetes CronJob**
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-job
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: brownie-metadata-db:latest
+            command: ["python", "-m", "src.backup.cli", "backup"]
+```
+
+### 🔒 Security Features
+
+- **Encryption**: At-rest and in-transit encryption
+- **Access Control**: IAM roles and service accounts
+- **Audit Logging**: Complete operation history
+- **Key Management**: Cloud KMS integration
+- **Network Security**: VPC endpoints and private networks
+
+### 📊 Monitoring & Alerting
+
+**Backup Metrics**
+- `backup_total` - Total number of backups created
+- `backup_duration_seconds` - Time taken for backup operations
+- `backup_size_bytes` - Size of backup files
+- `backup_errors_total` - Number of backup failures
+
+**Health Checks**
+- Backup status endpoint
+- Last backup timestamp
+- Storage health monitoring
+- Retention policy compliance
+
+### 🚨 Disaster Recovery
+
+**Recovery Procedures**
+1. Identify latest backup
+2. Restore database
+3. Verify restoration
+4. Update application
+
+**Recovery Time Objectives (RTO)**
+- Local restore: < 5 minutes
+- Cloud restore: < 15 minutes
+- Cross-region: < 30 minutes
+
+**Recovery Point Objectives (RPO)**
+- Continuous: WAL archiving (future)
+- Hourly: Every hour backups
+- Daily: Daily backups (default)
+
+### 📈 Performance Optimization
+
+- **Parallel Jobs**: Configure `BACKUP_PARALLEL_JOBS`
+- **Compression**: Enable with `BACKUP_COMPRESSION=true`
+- **Network**: Use high-bandwidth connections
+- **Storage**: Use SSD storage for temporary files
+
+### 🔄 Maintenance
+
+**Regular Tasks**
+- Weekly: Verify backup integrity
+- Monthly: Test restore procedures
+- Quarterly: Review retention policies
+- Annually: Update backup strategies
+
+**Cleanup Procedures**
+```bash
+# Manual cleanup
+python -m src.backup.cli cleanup
+
+# Check retention policy
+curl http://localhost:8000/backup/status | jq '.retention_days'
+```
+
+### 📚 Best Practices
+
+1. **3-2-1 Rule**: 3 copies, 2 different media, 1 offsite
+2. **Regular Testing**: Test restore procedures monthly
+3. **Monitoring**: Set up alerts for backup failures
+4. **Documentation**: Document recovery procedures
+5. **Automation**: Use automated scheduling
+
+For detailed backup documentation, see [BACKUP.md](BACKUP.md).
+
 ### Common Troubleshooting
 
 #### Kubernetes Issues

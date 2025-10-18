@@ -15,6 +15,8 @@ from database.connection import get_database_manager
 from database.models import Organization, Team, User, Incident, AgentConfig, Stats
 from app_logging.setup import configure_logging, get_logger
 from metrics.setup import configure_metrics
+from backup.config import BackupConfig
+from backup.api import create_backup_router
 
 
 # Configure logging
@@ -54,6 +56,11 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan
 )
+
+# Add backup API router
+backup_config = BackupConfig.from_env()
+backup_router = create_backup_router(backup_config)
+app.include_router(backup_router)
 
 
 @app.get("/health")
