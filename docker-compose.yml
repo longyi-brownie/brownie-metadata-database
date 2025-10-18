@@ -76,8 +76,6 @@ services:
       - "8000:8000"
       - "8001:8001"  # Metrics port
     depends_on:
-      migrate:
-        condition: service_completed_successfully
       redis:
         condition: service_healthy
     volumes:

@@ -64,8 +64,29 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    print("DEBUG: Starting run_migrations_online")
+    
+    # Override the database URL with environment variables if available
+    configuration = config.get_section(config.config_ini_section, {})
+    print(f"DEBUG: Original configuration: {configuration}")
+    
+    # Get database connection details from environment variables
+    db_host = os.getenv("DB_HOST", "localhost")
+    db_port = os.getenv("DB_PORT", "5432")
+    db_name = os.getenv("DB_NAME", "brownie_metadata")
+    db_user = os.getenv("DB_USER", "brownie")
+    db_password = os.getenv("DB_PASSWORD", "brownie")
+    
+    print(f"DEBUG: Environment variables - DB_HOST: {db_host}, DB_PORT: {db_port}, DB_NAME: {db_name}, DB_USER: {db_user}")
+    
+    # Construct the database URL
+    database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    print(f"DEBUG: Using database URL: {database_url}")
+    configuration["sqlalchemy.url"] = database_url
+    print(f"DEBUG: Updated configuration: {configuration}")
+    
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
@@ -79,6 +100,7 @@ def run_migrations_online() -> None:
             context.run_migrations()
 
 
+# Let alembic handle the execution timing
 if context.is_offline_mode():
     run_migrations_offline()
 else:

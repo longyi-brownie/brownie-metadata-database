@@ -13,8 +13,8 @@ from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from database.connection import get_database_manager
 from database.models import Organization, Team, User, Incident, AgentConfig, Stats
-from logging.setup import configure_logging, get_logger
-from metrics.setup import configure_metrics, get_metrics_collector
+from app_logging.setup import configure_logging, get_logger
+from metrics.setup import configure_metrics
 
 
 # Configure logging
