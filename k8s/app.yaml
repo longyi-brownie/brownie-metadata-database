@@ -4,7 +4,7 @@ metadata:
   name: brownie-metadata-app
   namespace: brownie-metadata
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: brownie-metadata-app
@@ -16,6 +16,7 @@ spec:
       containers:
       - name: app
         image: brownie-metadata-db:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8000
         - containerPort: 8001
@@ -71,11 +72,11 @@ spec:
               key: METRICS_PORT
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "512Mi"
+            cpu: "200m"
         livenessProbe:
           httpGet:
             path: /health
@@ -91,6 +92,9 @@ spec:
         volumeMounts:
         - name: app-logs
           mountPath: /app/logs
+      volumes:
+      - name: app-logs
+        emptyDir: {}
 
 ---
 apiVersion: v1
@@ -153,8 +157,8 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: brownie-metadata-app
-  minReplicas: 3
-  maxReplicas: 10
+  minReplicas: 1
+  maxReplicas: 3
   metrics:
   - type: Resource
     resource:

@@ -158,6 +158,60 @@ LIMIT 10;
 
 ### Common Troubleshooting
 
+#### Kubernetes Issues
+
+**Problem**: `kubectl: command not found`
+```bash
+# Install kubectl
+# macOS with Homebrew:
+brew install kubectl
+
+# Or download from: https://kubernetes.io/docs/tasks/tools/
+```
+
+**Problem**: `The connection to the server localhost:8080 was refused`
+```bash
+# This means no Kubernetes cluster is running
+# Choose one of the cluster setup options above
+
+# For minikube:
+minikube start
+
+# For Docker Desktop:
+# Enable Kubernetes in Docker Desktop settings
+
+# For kind:
+kind create cluster
+```
+
+**Problem**: `error: You must be logged in to the server (Unauthorized)`
+```bash
+# Get credentials for your cluster
+# For minikube:
+minikube start
+
+# For GKE:
+gcloud container clusters get-credentials CLUSTER_NAME --zone=ZONE
+
+# For EKS:
+aws eks update-kubeconfig --region REGION --name CLUSTER_NAME
+
+# For AKS:
+az aks get-credentials --resource-group RG_NAME --name CLUSTER_NAME
+```
+
+**Problem**: `no space left on device` or pods stuck in Pending
+```bash
+# Check node resources
+kubectl describe nodes
+
+# For minikube, increase resources:
+minikube stop
+minikube start --memory=4096 --cpus=2 --disk-size=20g
+
+# For Docker Desktop, increase resources in settings
+```
+
 #### Migration Issues
 
 **Problem**: `type "userrole" already exists`
@@ -237,6 +291,118 @@ docker-compose exec migrate python -m alembic upgrade head
 - Grafana: http://localhost:3000 (admin/admin)
 
 ### Option 2: Kubernetes (Production)
+
+#### Setting Up a Kubernetes Cluster
+
+Before deploying to Kubernetes, you need a running cluster. Here are the most common options:
+
+##### Local Development Clusters
+
+**Minikube (Recommended for local development):**
+```bash
+# Install minikube
+# macOS with Homebrew:
+brew install minikube
+
+# Or download from: https://minikube.sigs.k8s.io/docs/start/
+
+# Start minikube with sufficient resources
+minikube start --memory=4096 --cpus=2 --disk-size=20g
+
+# Enable required addons
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+# Verify cluster is running
+kubectl get nodes
+```
+
+**Docker Desktop (macOS/Windows):**
+```bash
+# Enable Kubernetes in Docker Desktop settings
+# Go to Settings > Kubernetes > Enable Kubernetes
+
+# Verify cluster is running
+kubectl get nodes
+```
+
+**Kind (Kubernetes in Docker):**
+```bash
+# Install kind
+# macOS with Homebrew:
+brew install kind
+
+# Create cluster
+kind create cluster --name brownie-metadata
+
+# Verify cluster is running
+kubectl get nodes
+```
+
+##### Cloud Clusters
+
+**Google GKE:**
+```bash
+# Install gcloud CLI and authenticate
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# Create cluster
+gcloud container clusters create brownie-metadata-cluster \
+  --zone=us-central1-a \
+  --num-nodes=3 \
+  --machine-type=e2-medium
+
+# Get credentials
+gcloud container clusters get-credentials brownie-metadata-cluster --zone=us-central1-a
+```
+
+**Amazon EKS:**
+```bash
+# Install eksctl
+# macOS with Homebrew:
+brew install eksctl
+
+# Create cluster
+eksctl create cluster \
+  --name brownie-metadata-cluster \
+  --region=us-west-2 \
+  --nodegroup-name=workers \
+  --node-type=t3.medium \
+  --nodes=3
+```
+
+**Azure AKS:**
+```bash
+# Install Azure CLI and login
+az login
+
+# Create resource group
+az group create --name brownie-metadata-rg --location eastus
+
+# Create AKS cluster
+az aks create \
+  --resource-group brownie-metadata-rg \
+  --name brownie-metadata-cluster \
+  --node-count 3 \
+  --node-vm-size Standard_B2s
+
+# Get credentials
+az aks get-credentials --resource-group brownie-metadata-rg --name brownie-metadata-cluster
+```
+
+##### Verify Your Cluster
+
+```bash
+# Check cluster status
+kubectl cluster-info
+
+# Check nodes
+kubectl get nodes
+
+# Check if you can create resources
+kubectl auth can-i create pods
+```
 
 #### Using Raw Manifests
 ```bash
