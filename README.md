@@ -156,6 +156,250 @@ ORDER BY mean_time DESC
 LIMIT 10;
 ```
 
+## Enterprise Monitoring & Observability
+
+### Grafana Dashboard
+
+The Brownie Metadata Database includes a comprehensive, enterprise-ready Grafana dashboard that provides real-time insights into system performance, business metrics, and operational health.
+
+#### Dashboard Features
+
+**📊 Performance Metrics:**
+- **Request Rate (RPS)**: Real-time request throughput by endpoint and method
+- **Response Time**: P50, P95, P99 latency percentiles for SLA monitoring
+- **Error Rate**: Application error tracking and alerting
+- **Database Performance**: Query rate, transaction rate, and connection monitoring
+
+**🏢 Business Metrics:**
+- **User Analytics**: Total users, active users, and user growth trends
+- **Organization Metrics**: Multi-tenant organization and team tracking
+- **Incident Management**: Total incidents, active incidents, and resolution time tracking
+
+**🔧 Operational Health:**
+- **Database Health**: Active connections, query duration, and error rates
+- **System Resources**: CPU, memory, and storage utilization
+- **Service Availability**: Uptime monitoring and health checks
+
+#### Dashboard Installation
+
+**Option 1: Kubernetes (Recommended)**
+```bash
+# Apply the dashboard configuration
+kubectl apply -f grafana-dashboard-config.yaml
+
+# Access Grafana (port-forward or ingress)
+kubectl port-forward -n brownie-metadata svc/grafana 3000:3000
+# Open http://localhost:3000 (admin/admin)
+```
+
+**Option 2: Docker Compose**
+```bash
+# Dashboard is automatically loaded in Grafana
+docker compose up -d
+# Access http://localhost:3000 (admin/admin)
+```
+
+**Option 3: Manual Import**
+1. Open Grafana at http://localhost:3000
+2. Go to "+" → "Import"
+3. Upload `grafana-dashboard.json`
+4. Configure Prometheus data source if needed
+
+#### Key Metrics Explained
+
+| Metric | Type | Description | Business Value |
+|--------|------|-------------|----------------|
+| `requests_total` | Counter | Total HTTP requests | Traffic volume and growth |
+| `request_duration_seconds` | Histogram | Request latency | Performance and SLA compliance |
+| `users_total` | Gauge | Total registered users | Customer base growth |
+| `users_active` | Gauge | Currently active users | Engagement and usage |
+| `incidents_total` | Counter | Total incidents created | Support workload |
+| `incidents_active` | Gauge | Currently open incidents | Support queue status |
+| `incident_resolution_time_minutes` | Histogram | Time to resolve incidents | Support efficiency |
+| `db_queries_total` | Counter | Database query count | Database load |
+| `db_query_duration_seconds` | Histogram | Query execution time | Database performance |
+| `db_connections_active` | Gauge | Active DB connections | Resource utilization |
+| `errors_total` | Counter | Application errors | System reliability |
+
+#### Alerting Rules
+
+The dashboard includes recommended alerting thresholds:
+
+- **High Error Rate**: > 5% error rate for 5 minutes
+- **High Latency**: P95 response time > 2 seconds
+- **Database Issues**: Query duration P95 > 1 second
+- **High Incident Volume**: > 10 new incidents per hour
+- **Resource Exhaustion**: > 80% CPU or memory usage
+
+#### Customization
+
+The dashboard is fully customizable for enterprise needs:
+
+1. **Add Custom Metrics**: Extend the metrics collection in your application
+2. **Modify Thresholds**: Adjust alerting rules for your SLA requirements
+3. **Add Business KPIs**: Include revenue, conversion, or other business metrics
+4. **Multi-Environment**: Create separate dashboards for dev/staging/prod
+
+#### Enterprise Features
+
+- **Multi-tenant Monitoring**: Organization-scoped metrics and dashboards
+- **Role-based Access**: Different views for operators, managers, and executives
+- **Automated Reporting**: Scheduled reports and executive summaries
+- **Integration Ready**: Webhook support for PagerDuty, Slack, email alerts
+- **Compliance**: Audit trails and data retention policies
+
+### Enterprise Alerting & Incident Response
+
+The Brownie Metadata Database includes comprehensive, enterprise-grade alerting with multiple notification channels and automated incident response procedures.
+
+#### Alert Categories
+
+**🚨 Critical Alerts (Immediate Response)**
+- Service Down - Service unavailable for >1 minute
+- Critical Error Rate - Error rate >10% for 5 minutes
+- Critical Response Time - P95 latency >5 seconds
+- Database Connection Critical - >95 active connections
+- SLA Breach - 99th percentile >10 seconds
+- Potential DDoS - >500 requests/second
+
+**⚠️ Warning Alerts (15-minute Response)**
+- High Error Rate - Error rate >5% for 5 minutes
+- High Response Time - P95 latency >2 seconds
+- Database Connection High - >80 active connections
+- High Incident Volume - >10 incidents/hour
+- Long Incident Resolution - P95 >60 minutes
+- High CPU/Memory Usage - >80% utilization
+
+**ℹ️ Info Alerts (Monitoring)**
+- User Growth Anomaly - >1000 new users/hour
+- Unusual Query Pattern - >100 queries/second
+- Data Integrity Issues - Constraint violations
+
+#### Notification Channels
+
+**PagerDuty Integration**
+- Critical alerts → Immediate escalation
+- On-call rotation support
+- Escalation policies
+- Mobile app notifications
+
+**Slack Integration**
+- Real-time alerts in dedicated channels
+- Rich formatting with runbook links
+- Team collaboration features
+- Custom webhook support
+
+**Email Notifications**
+- Detailed incident reports
+- Executive summaries
+- Runbook links and context
+- Escalation chains
+
+**Microsoft Teams**
+- Enterprise chat integration
+- Rich card notifications
+- Team collaboration
+- Mobile notifications
+
+#### Alerting Rules Configuration
+
+**Prometheus Alert Rules**
+```yaml
+# Example: High Error Rate Alert
+- alert: HighErrorRate
+  expr: rate(errors_total[5m]) / rate(requests_total[5m]) > 0.05
+  for: 2m
+  labels:
+    severity: warning
+    service: brownie-metadata-database
+  annotations:
+    summary: "High error rate detected"
+    description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes."
+    runbook_url: "https://docs.brownie-metadata.com/runbooks/high-error-rate"
+```
+
+**AlertManager Configuration**
+- Intelligent grouping and deduplication
+- Escalation policies
+- Silence and inhibition rules
+- Multi-channel routing
+
+#### Incident Response Runbooks
+
+Comprehensive runbooks are provided for all alert types:
+
+1. **Immediate Actions** - First 5 minutes
+2. **Diagnostic Steps** - Root cause analysis
+3. **Resolution Procedures** - Step-by-step fixes
+4. **Escalation Paths** - When to escalate
+5. **Post-Incident Actions** - Follow-up procedures
+
+**Key Runbooks Include:**
+- Service Down Recovery
+- Database Performance Issues
+- High Error Rate Resolution
+- Security Incident Response
+- SLA Breach Recovery
+
+#### Alerting Installation
+
+**Kubernetes (Recommended)**
+```bash
+# Apply alerting configuration
+kubectl apply -f k8s/alerting.yaml
+
+# Check alert status
+kubectl get pods -n brownie-metadata -l app=alertmanager
+kubectl port-forward -n brownie-metadata svc/alertmanager 9093:9093
+
+# Access AlertManager
+open http://localhost:9093
+```
+
+**Docker Compose**
+```bash
+# Alerting is included in the monitoring stack
+docker compose up -d
+# Access AlertManager at http://localhost:9093
+```
+
+#### Alert Testing
+
+**Test Alert Rules**
+```bash
+# Trigger test alert
+kubectl exec -it -n brownie-metadata <app-pod> -- curl -X POST http://localhost:8000/test-alert
+
+# Check alert status
+curl http://localhost:9093/api/v1/alerts
+```
+
+**Validate Notifications**
+- Test PagerDuty integration
+- Verify Slack webhook delivery
+- Check email delivery
+- Validate escalation chains
+
+#### Customization
+
+**Add Custom Alerts**
+1. Define new Prometheus rules
+2. Configure notification channels
+3. Create runbook documentation
+4. Test alert scenarios
+
+**Modify Thresholds**
+- Adjust alert sensitivity
+- Set business-specific SLAs
+- Configure escalation timing
+- Customize notification content
+
+**Integration Examples**
+- Jira ticket creation
+- ServiceNow integration
+- Custom webhook endpoints
+- Third-party monitoring tools
+
 ### Common Troubleshooting
 
 #### Kubernetes Issues

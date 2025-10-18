@@ -12,6 +12,7 @@ resources:
   - redis.yaml
   - app.yaml
   - monitoring.yaml
+  - alerting.yaml
 
 images:
   - name: brownie-metadata-db
