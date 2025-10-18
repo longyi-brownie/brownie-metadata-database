@@ -60,11 +60,6 @@ graph TB
 # Copy client certificates to your FastAPI server project
 cp fastapi-certs/fastapi-client.* /path/to/your/fastapi-server/certs/
 
-# Set environment variables in your FastAPI server
-export DB_SSL_CERT=/path/to/your/fastapi-server/certs/fastapi-client.crt
-export DB_SSL_KEY=/path/to/your/fastapi-server/certs/fastapi-client.key
-export DB_SSL_ROOTCERT=/path/to/your/fastapi-server/certs/ca.crt
-export DB_MTLS_ENABLED=false  # Basic SSL for development
 ```
 
 **Production (Vault PKI):**
@@ -89,6 +84,57 @@ export DB_MTLS_ENABLED=true  # Enable mTLS for production
 - Use Vault for production certificate management
 - Development certificates are for testing only
 
+### PostgreSQL Server Configuration
+
+**✅ Automated Setup (Recommended):**
+
+**Docker Compose:**
+```bash
+# 1. Generate certificates
+./scripts/setup-dev-certs.sh
+
+# 2. Start with automated configuration
+docker compose up -d
+
+# PostgreSQL is automatically configured with:
+# - Certificate authentication user
+# - Proper permissions
+# - SSL certificates mounted
+```
+
+**Kubernetes:**
+```bash
+# 1. Apply PostgreSQL configuration
+kubectl apply -f k8s/postgres-config.yaml
+
+# 2. Deploy with automated setup
+kubectl apply -k k8s/
+
+# PostgreSQL is automatically configured with:
+# - pg_hba.conf for certificate auth
+# - User creation and permissions
+# - Certificate mounting
+```
+
+**Manual Setup (If Needed):**
+```sql
+-- Create user that matches certificate CN
+CREATE USER "brownie-fastapi-server" WITH CERTIFICATE;
+
+-- Grant necessary permissions
+GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
+GRANT USAGE ON SCHEMA public TO "brownie-fastapi-server";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "brownie-fastapi-server";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server";
+```
+
+**What's Automated:**
+- ✅ **User Creation** - `brownie-fastapi-server` user with certificate auth
+- ✅ **Permissions** - All necessary database permissions
+- ✅ **pg_hba.conf** - Certificate authentication configuration
+- ✅ **Certificate Mounting** - Server certificates in containers
+- ✅ **Future Tables** - Permissions for Alembic migrations
+
 ## Configuration
 
 ### Environment Variables
@@ -100,9 +146,7 @@ DB_PORT=5432
 DB_NAME=brownie_metadata
 DB_USER=brownie
 DB_SSL_MODE=require
-DB_SSL_CERT=/certs/client.crt
-DB_SSL_KEY=/certs/client.key
-DB_SSL_ROOTCERT=/certs/ca.crt
+# Certificates automatically read from /certs directory
 ```
 
 
@@ -199,19 +243,43 @@ kubectl create secret generic brownie-metadata-secrets \
    curl http://localhost:8000/health
    ```
 
-**Docker Architecture:**
+**Docker Infrastructure:**
 ```mermaid
 graph TB
     subgraph "Docker Compose"
-        A[FastAPI App :8000] --> B[PostgreSQL :5432]
-        A --> C[Redis :6379]
-        A --> D[Prometheus :9090]
-        A --> E[Grafana :3000]
+        A[PostgreSQL :5432]
+        B[Redis :6379]
+        C[Prometheus :9090]
+        D[Grafana :3000]
+        E[Backup Service]
+        F[Migration Service]
     end
     
-    F[Backup Service] --> G[S3/GCS/Azure]
-    A --> F
+    subgraph "External Storage"
+        G[S3/GCS/Azure]
+    end
+    
+    E -->|Backup| G
+    F -->|Schema Updates| A
+    A -->|Metrics| C
+    C -->|Dashboards| D
+    
+    style A fill:#e8f5e8
+    style E fill:#fff2cc
+    style F fill:#fff2cc
 ```
+
+**Available Components:**
+- ✅ **PostgreSQL** - Primary database
+- ✅ **Redis** - Caching and sessions
+- ✅ **Prometheus** - Metrics collection
+- ✅ **Grafana** - Metrics visualization
+- ✅ **Backup Service** - Automated database backups
+- ✅ **Migration Service** - Database schema updates
+
+**Future Components:**
+- 🔄 **Read Replicas** - For read scaling (planned)
+- 🔄 **Custom Metrics Scraper** - PostgreSQL-specific metrics (planned)
 
 ### Kubernetes (Production)
 
@@ -326,34 +394,35 @@ open http://localhost:8000/redoc
 
 ## Access Control
 
-### Open Source Version
+### Database Authentication
 
-The open source version provides basic authentication and role-based access control:
+**Client Certificate Authentication:**
+- **No passwords** - Uses client certificates for authentication
+- **Certificate CN**: `brownie-fastapi-server` (matches certificate Common Name)
+- **mTLS Support**: Mutual TLS verification in production
+- **Encrypted Connections**: All database traffic encrypted in transit
 
-- **Username/Password**: Basic authentication
-- **Roles**: Admin, User, Viewer roles
+**Certificate Management:**
+- **Development**: Local certificate files (gitignored)
+- **Production**: Vault PKI automatic certificate generation
+- **Rotation**: Automatic certificate rotation via Vault
+
+### FastAPI Server Authentication
+
+**User Authentication (Handled by FastAPI Server):**
+- **JWT/OAuth**: User authentication and authorization
+- **RBAC**: Role-based access control
 - **Organization Scoping**: Multi-tenant data isolation
+- **API Keys**: Service-to-service authentication
+
+**Database Access:**
+- **SQLAlchemy ORM**: Type-safe database queries
+- **Connection Pooling**: Efficient database connections
+- **Certificate-based**: All database access uses client certificates
 
 ### Enterprise Features
 
-For enterprise-grade access control including SSO, LDAP integration, advanced RBAC, and compliance features, please contact us for licensing information.
-
-### Current Access Control
-
-**Database Authentication:**
-- Username: `brownie`
-- Password: `brownie` (configurable via environment variables)
-- Database: `brownie_metadata`
-
-**API Authentication:**
-- JWT token-based authentication
-- Role-based endpoint protection
-- Organization-scoped data access
-
-**Role Permissions:**
-- **Admin**: Full access to all resources
-- **User**: Read/write access to assigned resources
-- **Viewer**: Read-only access to assigned resources
+For enterprise-grade access control including SSO, LDAP integration, advanced RBAC, and compliance features, please contact us at **info@brownie-ai.com** for licensing information.
 
 ## Production Deployment
 

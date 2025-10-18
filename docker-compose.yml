@@ -10,11 +10,19 @@ services:
       POSTGRES_USER: brownie
       POSTGRES_PASSWORD: brownie
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+      # SSL Configuration
+      POSTGRES_SSL_CERT: /var/lib/postgresql/server.crt
+      POSTGRES_SSL_KEY: /var/lib/postgresql/server.key
+      POSTGRES_SSL_CA: /var/lib/postgresql/ca.crt
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      # Certificate volumes (will be created by setup script)
+      - ./fastapi-certs/postgres-server.crt:/var/lib/postgresql/server.crt:ro
+      - ./fastapi-certs/postgres-server.key:/var/lib/postgresql/server.key:ro
+      - ./fastapi-certs/ca.crt:/var/lib/postgresql/ca.crt:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brownie -d brownie_metadata"]
       interval: 10s

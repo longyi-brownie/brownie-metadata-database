@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: brownie-metadata
+data:
+  pg_hba.conf: |
+    # TYPE  DATABASE        USER            ADDRESS                 METHOD
+    local   all             all                                     trust
+    host    all             all             127.0.0.1/32            trust
+    host    all             all             ::1/128                 trust
+    
+    # Certificate authentication for FastAPI server
+    hostssl all             brownie-fastapi-server  0.0.0.0/0       cert
+    
+    # Password authentication for admin access (development only)
+    host    all             brownie         0.0.0.0/0               md5
+    
+    # Local connections
+    local   all             all                                     peer
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-sql
+  namespace: brownie-metadata
+data:
+  init.sql: |
+    -- Create user for certificate authentication
+    DO $$
+    BEGIN
+        IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brownie-fastapi-server') THEN
+            CREATE USER "brownie-fastapi-server" WITH CERTIFICATE;
+        END IF;
+    END
+    $$;
+    
+    -- Grant necessary permissions
+    GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
+    GRANT USAGE ON SCHEMA public TO "brownie-fastapi-server";
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "brownie-fastapi-server";
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server";
+    
+    -- Grant permissions on future tables (for Alembic migrations)
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "brownie-fastapi-server";
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO "brownie-fastapi-server";

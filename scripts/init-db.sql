@@ -17,3 +17,22 @@ BEGIN
     RETURN NEW;
 END;
 $$ language 'plpgsql';
+
+-- Create user for certificate authentication
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brownie-fastapi-server') THEN
+        CREATE USER "brownie-fastapi-server" WITH CERTIFICATE;
+    END IF;
+END
+$$;
+
+-- Grant necessary permissions
+GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
+GRANT USAGE ON SCHEMA public TO "brownie-fastapi-server";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "brownie-fastapi-server";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server";
+
+-- Grant permissions on future tables (for Alembic migrations)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "brownie-fastapi-server";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO "brownie-fastapi-server";
