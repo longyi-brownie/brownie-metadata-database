@@ -26,7 +26,9 @@ class DatabaseManager:
             return self._engine
         
         # Get SSL configuration from certificate manager
-        ssl_config = cert_manager.get_database_ssl_config()
+        # Enable mTLS in production, basic SSL in development
+    mtls_enabled = os.getenv("DB_MTLS_ENABLED", "false").lower() == "true"
+    ssl_config = cert_manager.get_database_ssl_config(mtls_enabled=mtls_enabled)
         
         # Build database URL with SSL parameters
         database_url = self.settings.database_url

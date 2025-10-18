@@ -85,16 +85,24 @@ class CertificateManager:
         
         return None
     
-    def get_database_ssl_config(self) -> Dict[str, Any]:
+    def get_database_ssl_config(self, mtls_enabled: bool = False) -> Dict[str, Any]:
         """
         Get complete SSL configuration for database connection.
+        
+        Args:
+            mtls_enabled: Enable mutual TLS (both client and server verify certificates)
         
         Returns:
             Dictionary with SSL configuration parameters
         """
-        ssl_config = {
-            "sslmode": "require"
-        }
+        if mtls_enabled:
+            ssl_config = {
+                "sslmode": "verify-full"  # Full verification for mTLS
+            }
+        else:
+            ssl_config = {
+                "sslmode": "require"  # Basic SSL for development
+            }
         
         if self.vault_enabled or self._has_local_certs():
             # Get certificates

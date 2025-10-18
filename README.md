@@ -53,30 +53,33 @@ graph TB
 - The DB authenticates with cient certificates only (no passwords)
 **Development (Local Certificates):**
 ```bash
-# Generate development certificates (gitignored)
+# Generate development certificates for FastAPI server
 ./scripts/setup-dev-certs.sh
 
-# Set environment variable
-export LOCAL_CERT_DIR=dev-certs
+# Copy client certificates to your FastAPI server project
+cp fastapi-certs/fastapi-client.* /path/to/your/fastapi-server/certs/
 
-# For Kubernetes, create secret from files (NOT in git!)
-kubectl create secret generic brownie-metadata-secrets \
-  --from-file=database-client-cert=dev-certs/client.crt \
-  --from-file=database-client-key=dev-certs/client.key \
-  --from-file=database-ca-cert=dev-certs/ca.crt
+# Set environment variables in your FastAPI server
+export DB_SSL_CERT=/path/to/your/fastapi-server/certs/fastapi-client.crt
+export DB_SSL_KEY=/path/to/your/fastapi-server/certs/fastapi-client.key
+export DB_SSL_ROOTCERT=/path/to/your/fastapi-server/certs/ca.crt
+export DB_MTLS_ENABLED=false  # Basic SSL for development
 ```
 
-**Production (Vault Integration):**
+**Production (Vault PKI):**
 ```bash
 # Install Vault support
 pip install -e ".[vault]"
 
-# Configure Vault environment
+# Configure Vault PKI environment
 export VAULT_ENABLED=true
 export VAULT_URL=https://vault.company.com
 export VAULT_TOKEN=your-vault-token
+export VAULT_CERT_PATH=secret/brownie-metadata/certs
+export DB_MTLS_ENABLED=true  # Enable mTLS for production
 
-# No Kubernetes secrets needed - certificates loaded from Vault
+# Vault will automatically generate and manage certificates
+# No manual certificate management needed
 ```
 
 **⚠️ Security Notes:**

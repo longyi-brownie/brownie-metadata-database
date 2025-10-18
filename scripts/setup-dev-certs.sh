@@ -1,13 +1,13 @@
 #!/bin/bash
-# Setup development certificates for local testing
+# Setup development certificates for FastAPI server to connect to PostgreSQL
 
 set -e
 
-CERT_DIR="dev-certs"
+CERT_DIR="fastapi-certs"
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-5432}"
 
-echo "Setting up development certificates for Brownie Metadata Database..."
+echo "Setting up development certificates for FastAPI server → PostgreSQL..."
 
 # Create certificate directory
 mkdir -p "$CERT_DIR"
@@ -21,29 +21,29 @@ openssl genrsa -out ca.key 4096
 echo "Generating CA certificate..."
 openssl req -new -x509 -days 365 -key ca.key -out ca.crt -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=Brownie-CA"
 
-# Generate server private key
-echo "Generating server private key..."
-openssl genrsa -out server.key 4096
+# Generate PostgreSQL server private key
+echo "Generating PostgreSQL server private key..."
+openssl genrsa -out postgres-server.key 4096
 
-# Generate server certificate signing request
-echo "Generating server certificate signing request..."
-openssl req -new -key server.key -out server.csr -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=$DB_HOST"
+# Generate PostgreSQL server certificate signing request
+echo "Generating PostgreSQL server certificate signing request..."
+openssl req -new -key postgres-server.key -out postgres-server.csr -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=$DB_HOST"
 
-# Generate server certificate
-echo "Generating server certificate..."
-openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365
+# Generate PostgreSQL server certificate
+echo "Generating PostgreSQL server certificate..."
+openssl x509 -req -in postgres-server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out postgres-server.crt -days 365
 
-# Generate client private key
-echo "Generating client private key..."
-openssl genrsa -out client.key 4096
+# Generate FastAPI client private key
+echo "Generating FastAPI client private key..."
+openssl genrsa -out fastapi-client.key 4096
 
-# Generate client certificate signing request
-echo "Generating client certificate signing request..."
-openssl req -new -key client.key -out client.csr -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=brownie-client"
+# Generate FastAPI client certificate signing request
+echo "Generating FastAPI client certificate signing request..."
+openssl req -new -key fastapi-client.key -out fastapi-client.csr -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=brownie-fastapi-server"
 
-# Generate client certificate
-echo "Generating client certificate..."
-openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -days 365
+# Generate FastAPI client certificate
+echo "Generating FastAPI client certificate..."
+openssl x509 -req -in fastapi-client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out fastapi-client.crt -days 365
 
 # Clean up CSR files
 rm -f *.csr
@@ -56,15 +56,15 @@ echo "Development certificates generated successfully!"
 echo ""
 echo "Certificate files created in $CERT_DIR/:"
 echo "  - ca.crt (CA certificate)"
-echo "  - server.crt (Server certificate)"
-echo "  - server.key (Server private key)"
-echo "  - client.crt (Client certificate)"
-echo "  - client.key (Client private key)"
+echo "  - postgres-server.crt (PostgreSQL server certificate)"
+echo "  - postgres-server.key (PostgreSQL server private key)"
+echo "  - fastapi-client.crt (FastAPI client certificate)"
+echo "  - fastapi-client.key (FastAPI client private key)"
 echo ""
 echo "To use these certificates:"
-echo "  1. Set LOCAL_CERT_DIR=$CERT_DIR in your environment"
-echo "  2. Configure PostgreSQL to use server.crt and server.key"
-echo "  3. The application will automatically use client.crt and client.key"
+echo "  1. Copy fastapi-client.* to your FastAPI server project"
+echo "  2. Configure PostgreSQL to use postgres-server.crt and postgres-server.key"
+echo "  3. Set DB_SSL_CERT and DB_SSL_KEY in your FastAPI server environment"
 echo ""
 echo "⚠️  WARNING: These are development certificates only!"
-echo "   Never use these in production. Use Vault for production certificates."
+echo "   Never use these in production. Use Vault PKI for production certificates."
