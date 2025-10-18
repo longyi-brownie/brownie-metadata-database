@@ -51,6 +51,7 @@ graph TB
 
 ### Certificate Setup
 - The DB authenticates with cient certificates only (no passwords)
+
 **Development (Local Certificates):**
 ```bash
 # Generate development certificates for FastAPI server
