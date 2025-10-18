@@ -28,36 +28,17 @@ The database includes the following core tables:
 ```mermaid
 graph TB
     subgraph "Brownie Platform"
-        A[Brownie Agent] --> B[FastAPI Gateway]
-        C[Brownie Service] --> B
-        B --> D[Metadata Database]
-        A --> F[Config Service]
-    end
-    
-    subgraph "Metadata Database"
-        D --> G[PostgreSQL Primary]
-        D --> H[PostgreSQL Replicas]
-        D --> I[Redis Cache]
-        D --> J[Backup Storage]
-    end
-    
-    subgraph "External Services"
-        K[Monitoring] --> D
-        L[Alerting] --> D
-        M[Backup Service] --> J
-    end
-    
-    subgraph "Client Applications"
-        N[Web UI] --> B
-        O[Mobile App] --> B
-        P[CLI Tools] --> B
+        A[Brownie Agent] --> B[Config Service]
+        B --> C[FastAPI Gateway]
+        A --> C
+        C --> D[Metadata Database]
     end
 ```
 
 **Related Repositories:**
 - [Brownie Core](https://github.com/longyi-brownie/brownie) - Main Brownie incident assistant
 - [Brownie Config Service](https://github.com/longyi-brownie/brownie-config-service) - Configuration management service
-- [Brownie Metadata Database](https://github.com/longyi-brownie/brownie-metadata-database) - This repository
+- [Brownie Metadata FastApi Server](https://github.com/longyi-brownie/brownie-metadata-api) - This repository
 
 ## Quick Start
 
@@ -453,8 +434,8 @@ See [Database Sharding Runbook](docs/RUNBOOK-database-sharding.md) for comprehen
 
 ### Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/brownie-ai/metadata-database/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/brownie-ai/metadata-database/discussions)
+- **Issues**: [GitHub Issues](https://github.com/longyi-brownie/brownie-metadata-database/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/longyi-brownie/brownie-metadata-database/discussions)
 - **Enterprise Support**: [info@brownie-ai.com](mailto:info@brownie-ai.com)
 
 ### Contributing
