@@ -195,7 +195,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server
    git clone https://github.com/longyi-brownie/brownie-metadata-database
    cd brownie-metadata-database
    docker compose up -d
-   ```
+```
 
 2. **Verify the services are running:**
 ```bash
@@ -499,7 +499,13 @@ open http://localhost:9090
 - Incident volume and resolution times
 - System resource utilization
 
-**Screenshots**: *[Dashboard screenshots will be added]*
+**Screenshots**: 
+
+![Brownie Business Metrics Dashboard](monitoring/grafana-business-metrics.png)
+*Business metrics dashboard showing organizations, teams, users, and incident trends*
+
+![Brownie Database Overview Dashboard](monitoring/grafana-database-overview.jpg)
+*Database overview dashboard with connection stats, table sizes, and Redis metrics*
 
 ### Alerting
 
