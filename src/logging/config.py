@@ -100,4 +100,4 @@ def configure_logging(config: Optional[LoggingConfig] = None) -> LoggingConfig:
 
 def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
     """Get a configured logger."""
-    return structlog.get_logger(name)  # type: ignore[no-any-return]
+    return structlog.get_logger(name)

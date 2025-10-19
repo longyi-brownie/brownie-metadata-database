@@ -11,6 +11,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 Base = declarative_base()
 
+# Type alias for Base to avoid mypy issues
+BaseType = Any
+
 
 class TimestampMixin:
     """Mixin for created_at and updated_at timestamps."""
@@ -91,7 +94,7 @@ class SoftDeleteMixin:
     )
 
 
-class BaseModel(Base, TimestampMixin):  # type: ignore[misc]
+class BaseModel(Base, TimestampMixin):  # type: ignore[valid-type]
     """Base model with common fields."""
 
     __abstract__ = True
