@@ -1,8 +1,8 @@
 """Database models package."""
 
 from .agent_config import AgentConfig, AgentType
-from .config import Config, ConfigType, ConfigStatus
-from .incident import Incident, IncidentStatus, IncidentPriority
+from .config import Config, ConfigStatus, ConfigType
+from .incident import Incident, IncidentPriority, IncidentStatus
 from .organization import Organization
 from .stats import Stats
 from .team import Team
