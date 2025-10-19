@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 import structlog
 from pydantic import Field
@@ -56,20 +56,20 @@ class LoggingConfig(BaseSettings):
 
         processors.extend(
             [
-                structlog.stdlib.PositionalArgumentsFormatter(),
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.UnicodeDecoder(),
+                structlog.stdlib.PositionalArgumentsFormatter(),  # type: ignore[list-item]
+                structlog.processors.StackInfoRenderer(),  # type: ignore[list-item]
+                structlog.processors.format_exc_info,  # type: ignore[list-item]
+                structlog.processors.UnicodeDecoder(),  # type: ignore[list-item]
             ]
         )
 
         if self.include_timestamps:
-            processors.insert(-1, structlog.processors.TimeStamper(fmt="iso"))
+            processors.insert(-1, structlog.processors.TimeStamper(fmt="iso"))  # type: ignore[arg-type]
 
         if self.format == "json":
-            processors.append(structlog.processors.JSONRenderer())
+            processors.append(structlog.processors.JSONRenderer())  # type: ignore[arg-type]
         else:
-            processors.append(structlog.dev.ConsoleRenderer())
+            processors.append(structlog.dev.ConsoleRenderer())  # type: ignore[arg-type]
 
         structlog.configure(
             processors=processors,
@@ -98,6 +98,6 @@ def configure_logging(config: Optional[LoggingConfig] = None) -> LoggingConfig:
     return config
 
 
-def get_logger(name: str = None) -> structlog.BoundLogger:
+def get_logger(name: Optional[str] = None) -> structlog.BoundLogger:
     """Get a configured logger."""
-    return structlog.get_logger(name)
+    return structlog.get_logger(name)  # type: ignore[no-any-return]

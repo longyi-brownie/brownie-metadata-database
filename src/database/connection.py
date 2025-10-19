@@ -94,7 +94,7 @@ class DatabaseManager:
         if self._session_factory is None:
             self.create_engine()
 
-        return self._session_factory()
+        return self._session_factory()  # type: ignore[misc]
 
     def close(self):
         """Close the database engine and all connections."""

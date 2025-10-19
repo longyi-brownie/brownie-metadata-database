@@ -1,6 +1,7 @@
 """Incident model."""
 
 import enum
+import uuid
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, Enum, ForeignKey, Integer, String, Text
@@ -94,7 +95,7 @@ class Incident(
         nullable=False,
         index=True,
     )
-    created_by: Mapped[UUID] = mapped_column(
+    created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
