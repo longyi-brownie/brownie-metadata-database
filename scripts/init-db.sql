@@ -36,3 +36,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server
 -- Grant permissions on future tables (for Alembic migrations)
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "brownie-fastapi-server";
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO "brownie-fastapi-server";
+
+-- Remove password from the initial user after setup
+-- This ensures only certificate authentication is used
+ALTER USER brownie WITH NOLOGIN;
