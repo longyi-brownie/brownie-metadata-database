@@ -148,14 +148,14 @@ class TestIncident:
             created_by=sample_user.id,
             title="Test Incident",
             description="A test incident",
-            status="OPEN",
+            status="open",
             priority="MEDIUM",
         )
         test_db.add(incident)
         test_db.commit()
 
         assert incident.title == "Test Incident"
-        assert incident.status == "OPEN"
+        assert incident.status == "open"
         assert incident.priority == "MEDIUM"
         assert incident.org_id == sample_organization.id
         assert incident.team_id == sample_team.id
@@ -174,7 +174,7 @@ class TestAgentConfig:
             team_id=sample_team.id,
             name="Test Agent",
             description="A test agent",
-            agent_type="INCIDENT_RESPONSE",
+            agent_type="incident_response",
             is_active=True,
             config={"test": "value"},
             execution_timeout_seconds=300,
@@ -185,7 +185,7 @@ class TestAgentConfig:
         test_db.commit()
 
         assert config.name == "Test Agent"
-        assert config.agent_type == "INCIDENT_RESPONSE"
+        assert config.agent_type == "incident_response"
         assert config.is_active is True
         assert config.config == {"test": "value"}
         assert config.version == 1  # Default version

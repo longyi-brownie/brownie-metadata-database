@@ -1,6 +1,7 @@
 """Database connection and session management."""
 
 import os
+from typing import Optional, Union
 
 import structlog
 from sqlalchemy import create_engine, event
@@ -104,7 +105,7 @@ class DatabaseManager:
 
 
 # Global database manager instance
-_db_manager: DatabaseManager | None = None
+_db_manager: Optional[DatabaseManager] = None
 
 
 def get_database_manager() -> DatabaseManager:

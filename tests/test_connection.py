@@ -3,8 +3,8 @@
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from database.config import DatabaseSettings
-from database.connection import DatabaseManager, get_database_manager
+from src.database.config import DatabaseSettings
+from src.database.connection import DatabaseManager, get_database_manager
 
 
 class TestDatabaseManager:
@@ -22,7 +22,7 @@ class TestDatabaseManager:
     def test_create_engine(self):
         """Test creating database engine."""
         settings = DatabaseSettings(
-            host="localhost",
+            host="definitely-does-not-exist.invalid",  # Invalid hostname that won't resolve
             port=5432,
             name="test_db",
             user="test",
@@ -30,9 +30,12 @@ class TestDatabaseManager:
         )
         manager = DatabaseManager(settings)
 
-        # This will fail without a real database, but we can test the configuration
+        # This will fail with a nonexistent host
+        engine = manager.create_engine()
         with pytest.raises(OperationalError):
-            manager.create_engine()
+            # Actually try to connect to trigger the error
+            with engine.connect() as conn:
+                conn.execute("SELECT 1")
 
     def test_get_database_manager_singleton(self):
         """Test that get_database_manager returns a singleton."""
@@ -55,7 +58,7 @@ class TestDatabaseSettings:
             password="test",
         )
 
-        expected_url = "postgresql://test:test@localhost:5432/test_db"
+        expected_url = "postgresql://test:test@192.168.1.999:5432/test_db"
         assert settings.database_url == expected_url
 
     def test_async_database_url(self):
@@ -68,7 +71,7 @@ class TestDatabaseSettings:
             password="test",
         )
 
-        expected_url = "postgresql+asyncpg://test:test@localhost:5432/test_db"
+        expected_url = "postgresql+asyncpg://test:test@192.168.1.999:5432/test_db"
         assert settings.async_database_url == expected_url
 
     def test_default_values(self):
