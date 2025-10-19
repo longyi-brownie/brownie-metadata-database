@@ -94,7 +94,7 @@ class SoftDeleteMixin:
     )
 
 
-class BaseModel(Base, TimestampMixin):  # type: ignore[valid-type]
+class BaseModel(Base, TimestampMixin):  # type: ignore[valid-type,misc]
     """Base model with common fields."""
 
     __abstract__ = True
