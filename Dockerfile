@@ -7,6 +7,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
@@ -21,8 +22,5 @@ COPY . .
 # Create logs directory
 RUN mkdir -p /app/logs
 
-# Expose ports
-EXPOSE 8000 8001
-
-# Set default command
-CMD ["python", "main.py"]
+# Set default command for migrations
+CMD ["alembic", "upgrade", "head"]

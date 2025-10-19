@@ -1,18 +1,7 @@
-"""
-Backup module for Brownie Metadata Database
-Provides automated backup functionality with cloud storage support
-"""
+"""Backup system for Brownie Metadata Database."""
 
-from .config import BackupConfig
+from .cli import main
 from .manager import BackupManager
-from .providers import S3BackupProvider, GCSBackupProvider, AzureBackupProvider
-from .scheduler import BackupScheduler
+from .providers import BackupProvider, S3Provider, LocalProvider
 
-__all__ = [
-    "BackupConfig",
-    "BackupManager", 
-    "S3BackupProvider",
-    "GCSBackupProvider", 
-    "AzureBackupProvider",
-    "BackupScheduler"
-]
+__all__ = ["main", "BackupManager", "BackupProvider", "S3Provider", "LocalProvider"]

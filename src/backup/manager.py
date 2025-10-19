@@ -1,351 +1,368 @@
-"""
-Backup manager for orchestrating database backups
-"""
+"""Backup manager for orchestrating backup operations."""
 
 import os
-import gzip
-import json
 import subprocess
 import tempfile
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, List, Optional, Any
+import structlog
 
 from .config import BackupConfig
-from .providers import get_backup_provider
+from .providers import BackupProvider, LocalProvider, S3Provider
+
+logger = structlog.get_logger(__name__)
 
 
 class BackupManager:
-    """Manages database backups with cloud storage support"""
+    """Manages backup operations for the database."""
     
     def __init__(self, config: BackupConfig):
         self.config = config
-        self.provider = get_backup_provider(config)
-        self.backup_dir = Path("/tmp/backups")
-        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.logger = logger.bind(manager="BackupManager")
+        self.provider = self._create_provider()
     
-    def create_backup(self, backup_name: Optional[str] = None) -> Dict[str, Any]:
-        """Create a new database backup"""
-        if not backup_name:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = f"brownie_metadata_{timestamp}"
-        
-        # Create backup file path
-        backup_file = self.backup_dir / f"{backup_name}.sql"
-        compressed_file = self.backup_dir / f"{backup_name}.sql.gz"
-        
-        try:
-            # Create database dump
-            print(f"Creating database backup: {backup_name}")
-            success = self._create_database_dump(backup_file)
-            
-            if not success:
-                return {
-                    "success": False,
-                    "error": "Failed to create database dump",
-                    "backup_name": backup_name
-                }
-            
-            # Compress if enabled
-            if self.config.compression:
-                print("Compressing backup...")
-                self._compress_file(backup_file, compressed_file)
-                final_file = compressed_file
-            else:
-                final_file = backup_file
-            
-            # Upload to storage
-            print(f"Uploading backup to {self.config.provider.value}...")
-            remote_path = f"{backup_name}.sql.gz" if self.config.compression else f"{backup_name}.sql"
-            upload_success = self.provider.upload_backup(str(final_file), remote_path)
-            
-            if not upload_success:
-                return {
-                    "success": False,
-                    "error": "Failed to upload backup",
-                    "backup_name": backup_name
-                }
-            
-            # Verify backup if enabled
-            if self.config.verify_backup:
-                print("Verifying backup...")
-                verify_success = self._verify_backup(final_file)
-                if not verify_success:
-                    print("Warning: Backup verification failed")
-            
-            # Clean up local files
-            self._cleanup_local_files(backup_file, compressed_file)
-            
-            # Get backup info
-            backup_info = self._get_backup_info(final_file, remote_path)
-            
-            print(f"Backup completed successfully: {backup_name}")
-            return {
-                "success": True,
-                "backup_name": backup_name,
-                "remote_path": remote_path,
-                "size": backup_info["size"],
-                "created": backup_info["created"],
-                "provider": self.config.provider.value
-            }
-            
-        except Exception as e:
-            print(f"Error creating backup: {e}")
-            self._cleanup_local_files(backup_file, compressed_file)
-            return {
-                "success": False,
-                "error": str(e),
-                "backup_name": backup_name
-            }
+    def _create_provider(self) -> BackupProvider:
+        """Create backup provider based on configuration."""
+        if self.config.provider == "local":
+            return LocalProvider(self.config)
+        elif self.config.provider == "s3":
+            return S3Provider(self.config)
+        else:
+            raise ValueError(f"Unsupported backup provider: {self.config.provider}")
     
-    def restore_backup(self, backup_name: str, target_database: Optional[str] = None) -> Dict[str, Any]:
-        """Restore a database backup"""
-        if not target_database:
-            target_database = self.config.db_name
+    def create_backup(self, backup_name: str, verify: bool = True) -> Dict[str, Any]:
+        """Create a database backup."""
+        start_time = time.time()
         
-        # Determine file extension
-        remote_path = f"{backup_name}.sql.gz" if self.config.compression else f"{backup_name}.sql"
-        local_file = self.backup_dir / f"restore_{backup_name}.sql"
-        compressed_file = self.backup_dir / f"restore_{backup_name}.sql.gz"
+        self.logger.info("Starting backup creation", backup_name=backup_name)
         
         try:
-            print(f"Restoring backup: {backup_name}")
+            # Create temporary file for backup
+            with tempfile.NamedTemporaryFile(suffix='.sql', delete=False) as temp_file:
+                temp_path = temp_file.name
             
-            # Download backup
-            print("Downloading backup...")
-            download_success = self.provider.download_backup(remote_path, str(compressed_file if self.config.compression else local_file))
+            # Create pg_dump command and environment
+            cmd = self._build_pg_dump_command(temp_path)
+            env = self._get_environment()
             
-            if not download_success:
-                return {
-                    "success": False,
-                    "error": "Failed to download backup"
-                }
-            
-            # Decompress if needed
-            if self.config.compression:
-                print("Decompressing backup...")
-                self._decompress_file(compressed_file, local_file)
-            
-            # Restore database
-            print(f"Restoring to database: {target_database}")
-            restore_success = self._restore_database_dump(local_file, target_database)
-            
-            if not restore_success:
-                return {
-                    "success": False,
-                    "error": "Failed to restore database"
-                }
-            
-            # Clean up local files
-            self._cleanup_local_files(local_file, compressed_file)
-            
-            print(f"Backup restored successfully: {backup_name}")
-            return {
-                "success": True,
-                "backup_name": backup_name,
-                "target_database": target_database
-            }
-            
-        except Exception as e:
-            print(f"Error restoring backup: {e}")
-            self._cleanup_local_files(local_file, compressed_file)
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def list_backups(self) -> List[Dict[str, Any]]:
-        """List available backups"""
-        return self.provider.list_backups()
-    
-    def delete_backup(self, backup_name: str) -> Dict[str, Any]:
-        """Delete a backup"""
-        remote_path = f"{backup_name}.sql.gz" if self.config.compression else f"{backup_name}.sql"
-        
-        try:
-            success = self.provider.delete_backup(remote_path)
-            if success:
-                return {
-                    "success": True,
-                    "message": f"Backup {backup_name} deleted successfully"
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": "Failed to delete backup"
-                }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def cleanup_old_backups(self) -> Dict[str, Any]:
-        """Clean up old backups based on retention policy"""
-        try:
-            deleted_count = self.provider.cleanup_old_backups()
-            return {
-                "success": True,
-                "deleted_count": deleted_count,
-                "message": f"Cleaned up {deleted_count} old backups"
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
-    def _create_database_dump(self, output_file: Path) -> bool:
-        """Create PostgreSQL database dump"""
-        try:
-            # Set PGPASSWORD environment variable
-            env = os.environ.copy()
-            env['PGPASSWORD'] = self.config.db_password
-            
-            # Build pg_dump command
-            cmd = [
-                'pg_dump',
-                '-h', self.config.db_host,
-                '-p', str(self.config.db_port),
-                '-U', self.config.db_user,
-                '-d', self.config.db_name,
-                '-f', str(output_file),
-                '--verbose',
-                '--no-password'
-            ]
-            
-            # Add compression options
-            if self.config.compression:
-                cmd.extend(['-Z', '9'])
-            
-            # Run pg_dump
-            result = subprocess.run(
-                cmd,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=self.config.backup_timeout
-            )
+            # Execute pg_dump
+            self.logger.info("Executing pg_dump", command=" ".join(cmd))
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.config.backup_timeout, env=env)
             
             if result.returncode != 0:
-                print(f"pg_dump failed: {result.stderr}")
-                return False
+                raise RuntimeError(f"pg_dump failed: {result.stderr}")
             
-            return True
+            # Get backup size
+            backup_size = Path(temp_path).stat().st_size
+            self.logger.info("pg_dump completed", size=backup_size)
             
-        except subprocess.TimeoutExpired:
-            print("pg_dump timed out")
-            return False
-        except Exception as e:
-            print(f"Error creating database dump: {e}")
-            return False
-    
-    def _restore_database_dump(self, input_file: Path, target_database: str) -> bool:
-        """Restore PostgreSQL database dump"""
-        try:
-            # Set PGPASSWORD environment variable
-            env = os.environ.copy()
-            env['PGPASSWORD'] = self.config.db_password
+            # Verify backup if requested
+            if verify:
+                self._verify_backup(temp_path)
             
-            # Build psql command
-            cmd = [
-                'psql',
-                '-h', self.config.db_host,
-                '-p', str(self.config.db_port),
-                '-U', self.config.db_user,
-                '-d', target_database,
-                '-f', str(input_file),
-                '--quiet'
-            ]
-            
-            # Run psql
-            result = subprocess.run(
-                cmd,
-                env=env,
-                capture_output=True,
-                text=True,
-                timeout=self.config.backup_timeout
-            )
-            
-            if result.returncode != 0:
-                print(f"psql restore failed: {result.stderr}")
-                return False
-            
-            return True
-            
-        except subprocess.TimeoutExpired:
-            print("psql restore timed out")
-            return False
-        except Exception as e:
-            print(f"Error restoring database dump: {e}")
-            return False
-    
-    def _compress_file(self, input_file: Path, output_file: Path) -> None:
-        """Compress file with gzip"""
-        with open(input_file, 'rb') as f_in:
-            with gzip.open(output_file, 'wb') as f_out:
-                f_out.writelines(f_in)
-    
-    def _decompress_file(self, input_file: Path, output_file: Path) -> None:
-        """Decompress gzip file"""
-        with gzip.open(input_file, 'rb') as f_in:
-            with open(output_file, 'wb') as f_out:
-                f_out.write(f_in.read())
-    
-    def _verify_backup(self, backup_file: Path) -> bool:
-        """Verify backup file integrity"""
-        try:
-            # Check if file exists and has content
-            if not backup_file.exists() or backup_file.stat().st_size == 0:
-                return False
-            
-            # For compressed files, try to decompress
-            if backup_file.suffix == '.gz':
-                with gzip.open(backup_file, 'rb') as f:
-                    # Try to read first few bytes
-                    f.read(1024)
-            
-            return True
-            
-        except Exception as e:
-            print(f"Backup verification failed: {e}")
-            return False
-    
-    def _get_backup_info(self, backup_file: Path, remote_path: str) -> Dict[str, Any]:
-        """Get backup file information"""
-        stat = backup_file.stat()
-        return {
-            "size": stat.st_size,
-            "created": datetime.fromtimestamp(stat.st_ctime),
-            "remote_path": remote_path
-        }
-    
-    def _cleanup_local_files(self, *files: Path) -> None:
-        """Clean up local temporary files"""
-        for file_path in files:
-            if file_path.exists():
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    print(f"Warning: Could not delete {file_path}: {e}")
-    
-    def get_backup_status(self) -> Dict[str, Any]:
-        """Get backup system status"""
-        try:
-            backups = self.list_backups()
-            return {
-                "provider": self.config.provider.value,
-                "destination": self.config.destination,
-                "total_backups": len(backups),
-                "retention_days": self.config.retention_days,
+            # Prepare metadata
+            metadata = {
+                "backup_name": backup_name,
+                "created": datetime.now().isoformat(),
+                "size": backup_size,
+                "status": "completed",
+                "database": self.config.db_name,
                 "compression": self.config.compression,
                 "encryption": self.config.encryption,
-                "last_backup": backups[0]["created"] if backups else None,
-                "backups": backups[:10]  # Last 10 backups
+                "provider": self.config.provider
             }
+            
+            # Upload to storage
+            upload_result = self.provider.upload_backup(backup_name, temp_path, metadata)
+            
+            # Clean up temporary file
+            Path(temp_path).unlink()
+            
+            duration = time.time() - start_time
+            upload_result["duration"] = duration
+            
+            self.logger.info("Backup created successfully", 
+                           backup_name=backup_name,
+                           size=backup_size,
+                           duration=duration)
+            
+            return upload_result
+            
         except Exception as e:
+            self.logger.error("Backup creation failed", error=str(e))
+            # Clean up temporary file if it exists
+            if 'temp_path' in locals() and Path(temp_path).exists():
+                Path(temp_path).unlink()
+            raise
+    
+    def restore_backup(self, backup_name: str) -> Dict[str, Any]:
+        """Restore database from backup."""
+        start_time = time.time()
+        
+        self.logger.info("Starting backup restore", backup_name=backup_name)
+        
+        try:
+            # Create temporary file for download
+            with tempfile.NamedTemporaryFile(suffix='.sql', delete=False) as temp_file:
+                temp_path = temp_file.name
+            
+            # Download backup from storage
+            if not self.provider.download_backup(backup_name, temp_path):
+                raise RuntimeError(f"Failed to download backup: {backup_name}")
+            
+            # Create psql command for restore
+            cmd = self._build_psql_command(temp_path)
+            env = self._get_environment()
+            
+            # Execute restore
+            self.logger.info("Executing database restore", command=" ".join(cmd))
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=self.config.backup_timeout, env=env)
+            
+            if result.returncode != 0:
+                raise RuntimeError(f"Database restore failed: {result.stderr}")
+            
+            # Clean up temporary file
+            Path(temp_path).unlink()
+            
+            duration = time.time() - start_time
+            
+            self.logger.info("Backup restored successfully", 
+                           backup_name=backup_name,
+                           duration=duration)
+            
             return {
-                "error": str(e),
-                "provider": self.config.provider.value,
-                "destination": self.config.destination
+                "backup_name": backup_name,
+                "duration": duration,
+                "status": "completed"
             }
+            
+        except Exception as e:
+            self.logger.error("Backup restore failed", error=str(e))
+            # Clean up temporary file if it exists
+            if 'temp_path' in locals() and Path(temp_path).exists():
+                Path(temp_path).unlink()
+            raise
+    
+    def list_backups(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """List available backups."""
+        return self.provider.list_backups(limit=limit)
+    
+    def delete_backup(self, backup_name: str) -> bool:
+        """Delete a backup."""
+        return self.provider.delete_backup(backup_name)
+    
+    def get_backup_info(self, backup_name: str) -> Optional[Dict[str, Any]]:
+        """Get information about a specific backup."""
+        return self.provider.get_backup_info(backup_name)
+    
+    def cleanup_old_backups(self) -> int:
+        """Clean up old backups based on retention policy."""
+        self.logger.info("Starting backup cleanup", retention_days=self.config.retention_days)
+        
+        try:
+            all_backups = self.provider.list_backups()
+            cutoff_date = datetime.now() - timedelta(days=self.config.retention_days)
+            
+            old_backups = []
+            for backup in all_backups:
+                try:
+                    backup_date = datetime.fromisoformat(backup["created"].replace('Z', '+00:00'))
+                    if backup_date < cutoff_date:
+                        old_backups.append(backup)
+                except (ValueError, KeyError):
+                    # Skip backups with invalid dates
+                    continue
+            
+            deleted_count = 0
+            for backup in old_backups:
+                if self.provider.delete_backup(backup["name"]):
+                    deleted_count += 1
+                    self.logger.info("Deleted old backup", backup_name=backup["name"])
+            
+            self.logger.info("Backup cleanup completed", deleted_count=deleted_count)
+            return deleted_count
+            
+        except Exception as e:
+            self.logger.error("Backup cleanup failed", error=str(e))
+            raise
+    
+    def get_old_backups(self) -> List[Dict[str, Any]]:
+        """Get list of old backups that would be cleaned up."""
+        try:
+            all_backups = self.provider.list_backups()
+            cutoff_date = datetime.now() - timedelta(days=self.config.retention_days)
+            
+            old_backups = []
+            for backup in all_backups:
+                try:
+                    backup_date = datetime.fromisoformat(backup["created"].replace('Z', '+00:00'))
+                    if backup_date < cutoff_date:
+                        old_backups.append(backup)
+                except (ValueError, KeyError):
+                    # Skip backups with invalid dates
+                    continue
+            
+            return old_backups
+            
+        except Exception as e:
+            self.logger.error("Failed to get old backups", error=str(e))
+            return []
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Get backup system status."""
+        try:
+            backups = self.provider.list_backups()
+            total_size = sum(backup.get("size", 0) for backup in backups)
+            
+            last_backup = None
+            if backups:
+                last_backup = max(backups, key=lambda x: x.get("created", ""))
+                last_backup = last_backup.get("created")
+            
+            return {
+                "provider": self.config.provider,
+                "destination": self.config.destination,
+                "schedule": self.config.schedule,
+                "retention_days": self.config.retention_days,
+                "last_backup": last_backup,
+                "total_backups": len(backups),
+                "total_size": total_size,
+                "compression": self.config.compression,
+                "encryption": self.config.encryption
+            }
+            
+        except Exception as e:
+            self.logger.error("Failed to get backup status", error=str(e))
+            return {
+                "provider": self.config.provider,
+                "destination": self.config.destination,
+                "schedule": self.config.schedule,
+                "retention_days": self.config.retention_days,
+                "last_backup": None,
+                "total_backups": 0,
+                "total_size": 0,
+                "compression": self.config.compression,
+                "encryption": self.config.encryption
+            }
+    
+    def _build_pg_dump_command(self, output_path: str) -> List[str]:
+        """Build pg_dump command with SSL and certificate options."""
+        cmd = [
+            "pg_dump",
+            "--host", self.config.db_host,
+            "--port", str(self.config.db_port),
+            "--username", self.config.db_user,
+            "--dbname", self.config.db_name,
+            "--file", output_path,
+            "--verbose",
+            "--no-password"
+        ]
+        
+        # Set password via environment
+        env = os.environ.copy()
+        env["PGPASSWORD"] = self.config.db_password
+        
+        # Add SSL options via environment variables
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+            env["PGSSLMODE"] = self.config.db_ssl_mode
+            
+            # Add certificate paths if available
+            cert_dir = Path(self.config.cert_dir)
+            client_cert = cert_dir / "client.crt"
+            client_key = cert_dir / "client.key"
+            ca_cert = cert_dir / "ca.crt"
+            
+            if client_cert.exists() and client_key.exists():
+                env["PGSSLCERT"] = str(client_cert)
+                env["PGSSLKEY"] = str(client_key)
+            
+            if ca_cert.exists():
+                env["PGSSLROOTCERT"] = str(ca_cert)
+        
+        return cmd
+    
+    def _build_psql_command(self, input_path: str) -> List[str]:
+        """Build psql command for restore with SSL and certificate options."""
+        cmd = [
+            "psql",
+            "--host", self.config.db_host,
+            "--port", str(self.config.db_port),
+            "--username", self.config.db_user,
+            "--dbname", self.config.db_name,
+            "--file", input_path,
+            "--verbose",
+            "--no-password"
+        ]
+        
+        # Set password via environment
+        env = os.environ.copy()
+        env["PGPASSWORD"] = self.config.db_password
+        
+        # Add SSL options via environment variables
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+            env["PGSSLMODE"] = self.config.db_ssl_mode
+            
+            # Add certificate paths if available
+            cert_dir = Path(self.config.cert_dir)
+            client_cert = cert_dir / "client.crt"
+            client_key = cert_dir / "client.key"
+            ca_cert = cert_dir / "ca.crt"
+            
+            if client_cert.exists() and client_key.exists():
+                env["PGSSLCERT"] = str(client_cert)
+                env["PGSSLKEY"] = str(client_key)
+            
+            if ca_cert.exists():
+                env["PGSSLROOTCERT"] = str(ca_cert)
+        
+        return cmd
+    
+    def _get_environment(self) -> Dict[str, str]:
+        """Get environment variables for PostgreSQL commands."""
+        env = os.environ.copy()
+        env["PGPASSWORD"] = self.config.db_password
+        
+        # Add SSL options via environment variables
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+            env["PGSSLMODE"] = self.config.db_ssl_mode
+            
+            # Add certificate paths if available
+            cert_dir = Path(self.config.cert_dir)
+            client_cert = cert_dir / "client.crt"
+            client_key = cert_dir / "client.key"
+            ca_cert = cert_dir / "ca.crt"
+            
+            if client_cert.exists() and client_key.exists():
+                env["PGSSLCERT"] = str(client_cert)
+                env["PGSSLKEY"] = str(client_key)
+            
+            if ca_cert.exists():
+                env["PGSSLROOTCERT"] = str(ca_cert)
+        
+        return env
+    
+    def _verify_backup(self, backup_path: str) -> None:
+        """Verify backup file integrity."""
+        self.logger.info("Verifying backup integrity", path=backup_path)
+        
+        try:
+            # Check if file exists and has content
+            if not Path(backup_path).exists():
+                raise RuntimeError("Backup file does not exist")
+            
+            if Path(backup_path).stat().st_size == 0:
+                raise RuntimeError("Backup file is empty")
+            
+            # Try to read first few lines to check format
+            with open(backup_path, 'r') as f:
+                first_line = f.readline().strip()
+                if not first_line.startswith('-- PostgreSQL database dump'):
+                    raise RuntimeError("Backup file does not appear to be a valid PostgreSQL dump")
+            
+            self.logger.info("Backup verification successful")
+            
+        except Exception as e:
+            self.logger.error("Backup verification failed", error=str(e))
+            raise RuntimeError(f"Backup verification failed: {e}")

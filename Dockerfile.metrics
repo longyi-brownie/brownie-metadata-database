@@ -1,0 +1,23 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY metrics_sidecar/requirements-metrics.txt .
+RUN pip install --no-cache-dir -r requirements-metrics.txt
+
+# Copy metrics sidecar code
+COPY metrics_sidecar/ ./metrics_sidecar/
+
+# Create non-root user
+RUN useradd -m -u 10001 metrics && chown -R metrics:metrics /app
+USER metrics
+
+EXPOSE 9091
+
+CMD ["python", "-m", "metrics_sidecar"]

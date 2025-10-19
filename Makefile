@@ -1,14 +1,20 @@
 # Brownie Metadata Database Makefile
 
-.PHONY: help install test test-integration migrate clean docker-up docker-down
+.PHONY: help install test test-integration migrate clean docker-up docker-down lint format backup backup-list backup-status backup-cleanup
 
 # Default target
 help:
 	@echo "Available targets:"
 	@echo "  install          Install dependencies"
 	@echo "  test             Run all tests"
-	@echo "  test-integration Run integration tests (API compatibility)"
+	@echo "  test-integration Run integration tests"
 	@echo "  migrate          Run database migrations"
+	@echo "  lint             Run linting (flake8, mypy)"
+	@echo "  format           Format code (black, isort)"
+	@echo "  backup           Create database backup"
+	@echo "  backup-list      List available backups"
+	@echo "  backup-status    Check backup status"
+	@echo "  backup-cleanup   Clean up old backups"
 	@echo "  clean            Clean up temporary files"
 	@echo "  docker-up        Start services with Docker Compose"
 	@echo "  docker-down      Stop services with Docker Compose"
@@ -23,13 +29,44 @@ test:
 
 # Run integration tests
 test-integration:
-	@echo "Running integration tests to check API compatibility..."
+	@echo "Running integration tests..."
 	pytest tests/test_integration.py -v
 
 # Run migration tests
 test-migration:
 	@echo "Testing migration compatibility..."
 	pytest tests/test_integration.py::TestMigrationCompatibility -v
+
+# Run linting
+lint:
+	@echo "Running flake8..."
+	flake8 .
+	@echo "Running mypy..."
+	mypy src/ --ignore-missing-imports
+
+# Format code
+format:
+	@echo "Running black..."
+	black .
+	@echo "Running isort..."
+	isort .
+
+# Backup commands
+backup:
+	@echo "Creating database backup..."
+	docker compose exec backup python -m src.backup.cli backup
+
+backup-list:
+	@echo "Listing available backups..."
+	docker compose exec backup python -m src.backup.cli list
+
+backup-status:
+	@echo "Checking backup status..."
+	docker compose exec backup python -m src.backup.cli status
+
+backup-cleanup:
+	@echo "Cleaning up old backups..."
+	docker compose exec backup python -m src.backup.cli cleanup
 
 # Run database migrations
 migrate:

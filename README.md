@@ -44,63 +44,102 @@ graph TB
 
 ### Prerequisites
 
-- Docker and Docker Compose (for local development)
-- Kubernetes cluster (for production)
-- PostgreSQL client tools (for database access)
-- OpenSSL (for certificate generation)
+- Docker and Docker Compose
+- Git
 
-### Certificate Setup
-- The DB authenticates with cient certificates only (no passwords)
+### 1. Clone and Setup
 
-**Development (Local Certificates):**
 ```bash
-# Generate development certificates for FastAPI server
-./scripts/setup-dev-certs.sh
-
-# Client certificates are handled by the FastAPI application
-# No need to copy certificates - they're managed separately
-
+git clone https://github.com/longyi-brownie/brownie-metadata-database.git
+cd brownie-metadata-database
 ```
 
-**Production (Vault PKI):**
+### 2. Start Database & Monitoring Services
+
 ```bash
-# Install Vault support
-pip install -e ".[vault]"
-
-# Configure Vault PKI environment
-export VAULT_ENABLED=true
-export VAULT_URL=https://vault.company.com
-export VAULT_TOKEN=your-vault-token
-export VAULT_CERT_PATH=secret/brownie-metadata/certs
-export DB_MTLS_ENABLED=true  # Enable mTLS for production
-
-# Vault will automatically generate and manage certificates
-# No manual certificate management needed
-```
-
-**⚠️ Security Notes:**
-- Certificates are automatically excluded from git (`.gitignore`)
-- Never commit certificates to version control
-- Use Vault for production certificate management
-- Development certificates are for testing only
-
-### PostgreSQL Server Configuration
-
-**✅ Automated Setup (Recommended):**
-
-**Docker Compose (Development):**
-```bash
-# 1. Generate certificates
-./scripts/setup-dev-certs.sh
-
-# 2. Start with automated configuration
 docker compose up -d
-
-# PostgreSQL is automatically configured with:
-# - Certificate authentication user
-# - Proper permissions
-# - SSL certificates mounted
 ```
+
+This will start:
+- PostgreSQL with SSL and certificate authentication
+- Database migrations
+- Redis for caching
+- **Enterprise metrics sidecar** - Custom business & technical metrics
+- **Prometheus** - Metrics collection and alerting
+- **Grafana** - Enterprise dashboards ready for copy-paste
+
+### 3. Verify Everything Works
+
+```bash
+# Check all services are running
+docker compose ps
+
+# Test database connection with certificates
+docker compose exec postgres psql -U brownie-fastapi-server -d brownie_metadata -c "SELECT version();"
+
+# Test Redis connection
+docker compose exec redis redis-cli ping
+
+# Test metrics collection
+curl http://localhost:9091/metrics
+
+# Access Grafana dashboards
+open http://localhost:3000
+# Login: admin/admin
+```
+
+### 4. Access Services
+
+- **PostgreSQL**: localhost:5432 (certificate auth required)
+- **Redis**: localhost:6379
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Custom Metrics**: http://localhost:9091/metrics
+
+## 📁 Project Structure
+
+```
+brownie-metadata-database/
+├── alembic/                    # Database migrations
+├── k8s/                        # Kubernetes deployment configs
+├── monitoring/                 # Enterprise monitoring stack
+│   ├── dashboards/            # Grafana dashboards
+│   ├── alerts/                # Prometheus alerting rules
+│   ├── provisioning/          # Grafana auto-configuration
+│   └── README.md              # Monitoring documentation
+├── runbooks/                  # Operational procedures
+│   ├── RUNBOOK-*.md          # Specific runbooks
+│   └── README.md             # Runbook index
+├── scripts/                   # Database setup scripts
+│   ├── init-db.sql           # Database initialization
+│   ├── setup-dev-certs.sh    # Certificate generation
+│   ├── setup-postgres-ssl.sh # SSL configuration
+│   ├── pg_hba.conf           # PostgreSQL auth config
+│   ├── postgresql.conf       # PostgreSQL server config
+│   └── env.example           # Environment template
+├── src/                       # Core database code
+│   ├── certificates.py       # Server certificate management
+│   └── database/             # SQLAlchemy models and connection
+├── tests/                     # Test suite
+├── metrics_sidecar/          # Custom metrics collection
+├── docker-compose.yml        # Complete stack definition
+├── Dockerfile                # Database migration container
+├── Dockerfile.metrics        # Metrics sidecar container
+└── README.md                 # This file
+```
+
+### Enterprise Monitoring Features
+
+- ✅ **Custom Metrics Sidecar** - Collects database, Redis, and business metrics
+- ✅ **Ready-to-Use Dashboards** - Copy-paste Grafana dashboards for enterprise customers
+- ✅ **Alerting Rules** - Pre-configured alerts for database health and business metrics
+- ✅ **SSL/TLS Configuration** - PostgreSQL starts with SSL enabled
+- ✅ **Certificate Authentication** - Only clients with valid certificates can connect
+- ✅ **User Creation** - `brownie-fastapi-server` user created automatically
+- ✅ **Database Migrations** - Schema applied automatically
+
+**📊 [Complete Monitoring Documentation](monitoring/README.md)**  
+**📚 [Operational Runbooks](runbooks/README.md)**
 
 **Kubernetes (Production):**
 ```bash

@@ -2,7 +2,7 @@ import os
 import sys
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
+from sqlalchemy import engine_from_config, create_engine
 from sqlalchemy import pool
 
 from alembic import context
@@ -85,10 +85,40 @@ def run_migrations_online() -> None:
     configuration["sqlalchemy.url"] = database_url
     print(f"DEBUG: Updated configuration: {configuration}")
     
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
+    # Add SSL parameters for certificate authentication
+    connect_args = {}
+    ssl_mode = os.getenv("DB_SSL_MODE", "require")
+    print(f"DEBUG: SSL mode: {ssl_mode}")
+    
+    if ssl_mode in ["require", "verify-ca", "verify-full"]:
+        connect_args["sslmode"] = ssl_mode
+        
+        # Add certificate paths if available
+        cert_dir = os.getenv("CERT_DIR", "/certs")
+        client_cert = os.path.join(cert_dir, "client.crt")
+        client_key = os.path.join(cert_dir, "client.key")
+        ca_cert = os.path.join(cert_dir, "ca.crt")
+        
+        print(f"DEBUG: Certificate paths - cert_dir: {cert_dir}")
+        print(f"DEBUG: client_cert exists: {os.path.exists(client_cert)}")
+        print(f"DEBUG: client_key exists: {os.path.exists(client_key)}")
+        print(f"DEBUG: ca_cert exists: {os.path.exists(ca_cert)}")
+        
+        if os.path.exists(client_cert) and os.path.exists(client_key):
+            connect_args["sslcert"] = client_cert
+            connect_args["sslkey"] = client_key
+            
+        if os.path.exists(ca_cert):
+            connect_args["sslrootcert"] = ca_cert
+    
+    print(f"DEBUG: Connect args: {connect_args}")
+    
+    # Create engine directly with SSL parameters
+    database_url = configuration["sqlalchemy.url"]
+    connectable = create_engine(
+        database_url,
         poolclass=pool.NullPool,
+        connect_args=connect_args,
     )
 
     with connectable.connect() as connection:

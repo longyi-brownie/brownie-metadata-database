@@ -1,6 +1,46 @@
-# Brownie Metadata Database - Incident Response Runbooks
+# Brownie Metadata Database - Operational Runbooks
 
-This directory contains comprehensive runbooks for incident response and troubleshooting common issues with the Brownie Metadata Database.
+This directory contains comprehensive operational runbooks for managing the Brownie Metadata Database in production environments.
+
+## Available Runbooks
+
+### Core Operations
+- **[Database Migration](RUNBOOK-database-migration.md)** - Safe database schema changes and migrations
+- **[Database Sharding](RUNBOOK-database-sharding.md)** - Horizontal scaling and sharding strategies
+- **[Disaster Recovery](RUNBOOK-disaster-recovery.md)** - Backup, restore, and failover procedures
+- **[Scaling Operations](RUNBOOK-scaling-operations.md)** - Vertical and horizontal scaling
+
+### API Integration
+- **[Database-API Changes](RUNBOOK-db-api-changes.md)** - Coordinating changes between database and API repositories
+
+### Incident Response
+- **[Incident Response](incident-response.md)** - Emergency procedures and troubleshooting (see below)
+
+## Quick Reference
+
+### Emergency Procedures
+1. **Database Down**: Check [Disaster Recovery](RUNBOOK-disaster-recovery.md#emergency-restore)
+2. **Migration Failed**: See [Database Migration](RUNBOOK-database-migration.md#rollback-procedures)
+3. **Performance Issues**: Review [Scaling Operations](RUNBOOK-scaling-operations.md#performance-troubleshooting)
+
+### Change Management
+1. **Schema Changes**: Follow [Database Migration](RUNBOOK-database-migration.md) process
+2. **API Compatibility**: Use [Database-API Changes](RUNBOOK-db-api-changes.md) workflow
+3. **Production Deployment**: See [Disaster Recovery](RUNBOOK-disaster-recovery.md#deployment-procedures)
+
+## Contributing
+
+When adding new runbooks:
+1. Use clear, step-by-step instructions
+2. Include rollback procedures
+3. Test procedures in staging first
+4. Update this README with new runbook links
+
+---
+
+# Incident Response Procedures
+
+This section contains emergency procedures and troubleshooting for common issues with the Brownie Metadata Database.
 
 ## 🚨 Critical Alerts
 

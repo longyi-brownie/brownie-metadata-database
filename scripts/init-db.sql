@@ -22,14 +22,14 @@ $$ language 'plpgsql';
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brownie-fastapi-server') THEN
-        CREATE USER "brownie-fastapi-server" WITH CERTIFICATE;
+        CREATE ROLE "brownie-fastapi-server" WITH LOGIN;
     END IF;
 END
 $$;
 
 -- Grant necessary permissions
 GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
-GRANT USAGE ON SCHEMA public TO "brownie-fastapi-server";
+GRANT USAGE, CREATE ON SCHEMA public TO "brownie-fastapi-server";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "brownie-fastapi-server";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server";
 

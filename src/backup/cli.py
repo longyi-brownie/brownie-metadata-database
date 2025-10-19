@@ -1,185 +1,216 @@
-"""
-Command-line interface for backup operations
-"""
+#!/usr/bin/env python3
+"""Backup CLI for Brownie Metadata Database."""
 
+import os
 import sys
 import argparse
-import json
+import structlog
 from datetime import datetime
+from pathlib import Path
 
-from .config import BackupConfig
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
 from .manager import BackupManager
-from .scheduler import BackupScheduler
+from .config import BackupConfig
+
+logger = structlog.get_logger(__name__)
 
 
 def main():
-    """Main CLI entry point"""
-    parser = argparse.ArgumentParser(description="Brownie Metadata Database Backup Tool")
+    """Main CLI entry point."""
+    parser = argparse.ArgumentParser(description="Brownie Metadata Database Backup")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     
     # Backup command
     backup_parser = subparsers.add_parser("backup", help="Create a backup")
-    backup_parser.add_argument("--name", help="Backup name (optional)")
-    
-    # Restore command
-    restore_parser = subparsers.add_parser("restore", help="Restore a backup")
-    restore_parser.add_argument("name", help="Backup name to restore")
-    restore_parser.add_argument("--target-db", help="Target database name")
+    backup_parser.add_argument("--name", help="Custom backup name")
+    backup_parser.add_argument("--verify", action="store_true", help="Verify backup after creation")
     
     # List command
     list_parser = subparsers.add_parser("list", help="List available backups")
+    list_parser.add_argument("--limit", type=int, default=10, help="Limit number of backups to show")
     
-    # Delete command
-    delete_parser = subparsers.add_parser("delete", help="Delete a backup")
-    delete_parser.add_argument("name", help="Backup name to delete")
+    # Restore command
+    restore_parser = subparsers.add_parser("restore", help="Restore from backup")
+    restore_parser.add_argument("backup_name", help="Name of backup to restore")
+    restore_parser.add_argument("--force", action="store_true", help="Force restore without confirmation")
     
     # Cleanup command
     cleanup_parser = subparsers.add_parser("cleanup", help="Clean up old backups")
+    cleanup_parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted")
     
     # Status command
     status_parser = subparsers.add_parser("status", help="Show backup status")
-    
-    # Schedule command
-    schedule_parser = subparsers.add_parser("schedule", help="Manage backup scheduling")
-    schedule_parser.add_argument("--start", action="store_true", help="Start scheduler")
-    schedule_parser.add_argument("--stop", action="store_true", help="Stop scheduler")
-    schedule_parser.add_argument("--status", action="store_true", help="Show scheduler status")
     
     args = parser.parse_args()
     
     if not args.command:
         parser.print_help()
-        sys.exit(1)
+        return 1
+    
+    # Configure logging
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer()
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
     
     try:
-        # Load configuration
-        config = BackupConfig.from_env()
-        config.validate()
-        
-        # Create backup manager
-        backup_manager = BackupManager(config)
+        config = BackupConfig()
+        manager = BackupManager(config)
         
         if args.command == "backup":
-            result = backup_manager.create_backup(args.name)
-            print_backup_result(result)
-            
-        elif args.command == "restore":
-            result = backup_manager.restore_backup(args.name, args.target_db)
-            print_backup_result(result)
-            
+            return backup_command(manager, args)
         elif args.command == "list":
-            backups = backup_manager.list_backups()
-            print_backup_list(backups)
-            
-        elif args.command == "delete":
-            result = backup_manager.delete_backup(args.name)
-            print_backup_result(result)
-            
+            return list_command(manager, args)
+        elif args.command == "restore":
+            return restore_command(manager, args)
         elif args.command == "cleanup":
-            result = backup_manager.cleanup_old_backups()
-            print_backup_result(result)
-            
+            return cleanup_command(manager, args)
         elif args.command == "status":
-            status = backup_manager.get_backup_status()
-            print_backup_status(status)
-            
-        elif args.command == "schedule":
-            handle_schedule_command(args, config)
+            return status_command(manager, args)
+        else:
+            parser.print_help()
+            return 1
             
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        logger.error("Backup operation failed", error=str(e), exc_info=True)
+        return 1
 
 
-def print_backup_result(result):
-    """Print backup operation result"""
-    if result["success"]:
-        print(f"✅ {result.get('message', 'Operation completed successfully')}")
-        if "backup_name" in result:
-            print(f"   Backup: {result['backup_name']}")
-        if "deleted_count" in result:
-            print(f"   Deleted: {result['deleted_count']} backups")
-    else:
-        print(f"❌ {result.get('message', 'Operation failed')}")
-        if "error" in result:
-            print(f"   Error: {result['error']}")
-
-
-def print_backup_list(backups):
-    """Print list of backups"""
-    if not backups:
-        print("No backups found")
-        return
+def backup_command(manager: BackupManager, args) -> int:
+    """Create a backup."""
+    backup_name = args.name or f"backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     
-    print(f"Found {len(backups)} backups:")
-    print()
-    print(f"{'Name':<30} {'Size':<10} {'Created':<20} {'Provider'}")
-    print("-" * 70)
+    logger.info("Starting backup", backup_name=backup_name)
     
-    for backup in backups:
-        size = format_size(backup["size"])
-        created = backup["created"].strftime("%Y-%m-%d %H:%M:%S")
-        print(f"{backup['name']:<30} {size:<10} {created:<20} {backup.get('provider', 'N/A')}")
+    try:
+        result = manager.create_backup(backup_name, verify=args.verify)
+        logger.info("Backup completed successfully", 
+                   backup_name=backup_name, 
+                   size=result.get('size'),
+                   duration=result.get('duration'))
+        print(f"✅ Backup '{backup_name}' created successfully")
+        return 0
+    except Exception as e:
+        logger.error("Backup failed", error=str(e))
+        print(f"❌ Backup failed: {e}")
+        return 1
 
 
-def print_backup_status(status):
-    """Print backup system status"""
-    print("Backup System Status")
-    print("=" * 50)
-    print(f"Provider: {status.get('provider', 'N/A')}")
-    print(f"Destination: {status.get('destination', 'N/A')}")
-    print(f"Total Backups: {status.get('total_backups', 0)}")
-    print(f"Retention Days: {status.get('retention_days', 'N/A')}")
-    print(f"Compression: {'Yes' if status.get('compression') else 'No'}")
-    print(f"Encryption: {'Yes' if status.get('encryption') else 'No'}")
+def list_command(manager: BackupManager, args) -> int:
+    """List available backups."""
+    try:
+        backups = manager.list_backups(limit=args.limit)
+        
+        if not backups:
+            print("No backups found")
+            return 0
+        
+        print(f"\n📦 Available Backups (showing {len(backups)}):")
+        print("-" * 80)
+        print(f"{'Name':<30} {'Size':<12} {'Created':<20} {'Status':<10}")
+        print("-" * 80)
+        
+        for backup in backups:
+            size_str = format_size(backup.get('size', 0))
+            created_str = backup.get('created', 'Unknown')
+            status = backup.get('status', 'Unknown')
+            print(f"{backup['name']:<30} {size_str:<12} {created_str:<20} {status:<10}")
+        
+        return 0
+    except Exception as e:
+        logger.error("Failed to list backups", error=str(e))
+        print(f"❌ Failed to list backups: {e}")
+        return 1
+
+
+def restore_command(manager: BackupManager, args) -> int:
+    """Restore from backup."""
+    if not args.force:
+        confirm = input(f"Are you sure you want to restore from '{args.backup_name}'? This will overwrite the current database! (yes/no): ")
+        if confirm.lower() != 'yes':
+            print("Restore cancelled")
+            return 0
     
-    if status.get('last_backup'):
-        last_backup = status['last_backup']
-        if isinstance(last_backup, str):
-            print(f"Last Backup: {last_backup}")
+    logger.info("Starting restore", backup_name=args.backup_name)
+    
+    try:
+        result = manager.restore_backup(args.backup_name)
+        logger.info("Restore completed successfully", 
+                   backup_name=args.backup_name,
+                   duration=result.get('duration'))
+        print(f"✅ Restore from '{args.backup_name}' completed successfully")
+        return 0
+    except Exception as e:
+        logger.error("Restore failed", error=str(e))
+        print(f"❌ Restore failed: {e}")
+        return 1
+
+
+def cleanup_command(manager: BackupManager, args) -> int:
+    """Clean up old backups."""
+    try:
+        if args.dry_run:
+            old_backups = manager.get_old_backups()
+            if not old_backups:
+                print("No old backups to clean up")
+                return 0
+            
+            print(f"\n🗑️  Old backups that would be deleted (dry run):")
+            print("-" * 50)
+            for backup in old_backups:
+                print(f"  - {backup['name']} ({backup.get('created', 'Unknown')})")
+            return 0
         else:
-            print(f"Last Backup: {last_backup.strftime('%Y-%m-%d %H:%M:%S')}")
-    else:
-        print("Last Backup: None")
-    
-    if status.get('backups'):
-        print("\nRecent Backups:")
-        for backup in status['backups'][:5]:
-            size = format_size(backup["size"])
-            created = backup["created"].strftime("%Y-%m-%d %H:%M:%S")
-            print(f"  {backup['name']} ({size}) - {created}")
+            deleted_count = manager.cleanup_old_backups()
+            print(f"✅ Cleaned up {deleted_count} old backups")
+            return 0
+    except Exception as e:
+        logger.error("Cleanup failed", error=str(e))
+        print(f"❌ Cleanup failed: {e}")
+        return 1
 
 
-def handle_schedule_command(args, config):
-    """Handle schedule-related commands"""
-    scheduler = BackupScheduler(BackupManager(config))
-    
-    if args.start:
-        scheduler.start()
-        print("✅ Backup scheduler started")
+def status_command(manager: BackupManager, args) -> int:
+    """Show backup status."""
+    try:
+        status = manager.get_status()
         
-    elif args.stop:
-        scheduler.stop()
-        print("✅ Backup scheduler stopped")
-        
-    elif args.status:
-        status = scheduler.get_scheduler_status()
-        print("Backup Scheduler Status")
-        print("=" * 30)
-        print(f"Running: {'Yes' if status['running'] else 'No'}")
+        print("\n📊 Backup Status:")
+        print("-" * 40)
+        print(f"Provider: {status['provider']}")
+        print(f"Destination: {status['destination']}")
         print(f"Schedule: {status['schedule']}")
+        print(f"Retention: {status['retention_days']} days")
+        print(f"Last Backup: {status.get('last_backup', 'Never')}")
+        print(f"Total Backups: {status.get('total_backups', 0)}")
+        print(f"Total Size: {format_size(status.get('total_size', 0))}")
         
-        next_backup = status.get('next_backup')
-        if next_backup:
-            print(f"Next Backup: {next_backup.strftime('%Y-%m-%d %H:%M:%S')}")
-        else:
-            print("Next Backup: Not scheduled")
+        return 0
+    except Exception as e:
+        logger.error("Failed to get status", error=str(e))
+        print(f"❌ Failed to get status: {e}")
+        return 1
 
 
-def format_size(size_bytes):
-    """Format size in human-readable format"""
+def format_size(size_bytes: int) -> str:
+    """Format size in bytes to human readable format."""
     if size_bytes == 0:
-        return "0B"
+        return "0 B"
     
     size_names = ["B", "KB", "MB", "GB", "TB"]
     i = 0
@@ -187,8 +218,8 @@ def format_size(size_bytes):
         size_bytes /= 1024.0
         i += 1
     
-    return f"{size_bytes:.1f}{size_names[i]}"
+    return f"{size_bytes:.1f} {size_names[i]}"
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

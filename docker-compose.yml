@@ -8,17 +8,19 @@ services:
     environment:
       POSTGRES_DB: brownie_metadata
       POSTGRES_USER: brownie
+      POSTGRES_PASSWORD: temp_password_for_init
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-      - ./scripts/setup-postgres-ssl.sh:/docker-entrypoint-initdb.d/02-setup-ssl.sh:ro
-      # Certificate volumes (will be created by setup script)
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init-db.sql:ro
+      # Certificate volumes
       - ./dev-certs/server.crt:/var/lib/postgresql/server.crt:ro
       - ./dev-certs/server.key:/var/lib/postgresql/server.key:ro
       - ./dev-certs/ca.crt:/var/lib/postgresql/ca.crt:ro
+      # PostgreSQL configuration
+      - ./scripts/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     command: [
       "postgres",
       "-c", "ssl=on",
@@ -32,26 +34,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - brownie-network
 
-  # Redis for caching and sessions
-  redis:
-    image: redis:7-alpine
-    container_name: brownie-metadata-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - brownie-network
-
-  # Database Migration Service
+  # Migration service
   migrate:
     build: .
     container_name: brownie-metadata-migrate
@@ -67,80 +51,118 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["python", "-m", "alembic", "upgrade", "head"]
-    networks:
-      - brownie-network
+    command: ["alembic", "upgrade", "head"]
 
-  # Main Application
-  app:
-    build: .
-    container_name: brownie-metadata-app
-    environment:
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: brownie_metadata
-      DB_USER: "brownie-fastapi-server"
-      DB_SSL_MODE: require
-      CERT_DIR: /certs
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      LOG_LEVEL: INFO
-      LOG_FORMAT: json
-      METRICS_ENABLED: "true"
-      METRICS_PORT: 8001
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: brownie-metadata-redis
     ports:
-      - "8000:8000"
-      - "8001:8001"  # Metrics port
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Custom metrics sidecar for enterprise monitoring
+  metrics-sidecar:
+    build: 
+      context: .
+      dockerfile: Dockerfile.metrics
+    container_name: brownie-metadata-metrics
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=brownie_metadata
+      - DB_USER=brownie-fastapi-server
+      - DB_SSL_MODE=require
+      - CERT_DIR=/certs
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - METRICS_PORT=9091
+    volumes:
+      - ./dev-certs:/certs:ro
+      - ./monitoring/dashboards:/app/dashboards:ro
+      - ./monitoring/alerts:/app/alerts:ro
+    ports:
+      - "9091:9091"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
-      - ./dev-certs:/certs:ro
-    networks:
-      - brownie-network
-    restart: unless-stopped
+    command: ["python", "-m", "metrics_sidecar"]
 
   # Prometheus for metrics collection
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.54.1
     container_name: brownie-metadata-prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts:/etc/prometheus/alerts:ro
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
-    networks:
-      - brownie-network
+      - '--web.enable-admin-api'
+    depends_on:
+      - metrics-sidecar
 
-  # Grafana for metrics visualization
+  # Grafana for enterprise dashboards
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.1.3
     container_name: brownie-metadata-grafana
     ports:
       - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: false
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-    networks:
-      - brownie-network
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    depends_on:
+      - prometheus
+
+  # Backup service
+  backup:
+    build: .
+    container_name: brownie-metadata-backup
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=brownie_metadata
+      - DB_USER=brownie-fastapi-server
+      - DB_PASSWORD=brownie
+      - DB_SSL_MODE=require
+      - CERT_DIR=/certs
+      - BACKUP_PROVIDER=local
+      - BACKUP_DESTINATION=/backups
+      - BACKUP_SCHEDULE=0 2 * * *
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_COMPRESSION=true
+      - BACKUP_ENCRYPTION=true
+    volumes:
+      - ./dev-certs:/certs:ro
+      - backup_data:/backups
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    command: ["python", "-m", "src.backup.scheduler"]
 
 volumes:
   postgres_data:
   redis_data:
   prometheus_data:
   grafana_data:
+  backup_data:
 
-networks:
-  brownie-network:
-    driver: bridge

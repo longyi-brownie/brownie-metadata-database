@@ -33,6 +33,12 @@ openssl req -new -key server.key -out server.csr -subj "/C=US/ST=CA/L=San Franci
 echo "Generating PostgreSQL server certificate..."
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 365
 
+# Generate client certificate for FastAPI
+echo "Generating client certificate for FastAPI..."
+openssl genrsa -out client.key 4096
+openssl req -new -key client.key -out client.csr -subj "/C=US/ST=CA/L=San Francisco/O=Brownie/OU=Dev/CN=brownie-fastapi-server"
+openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out client.crt -days 365
+
 # Clean up CSR files
 rm -f *.csr
 
@@ -46,6 +52,8 @@ echo "Certificate files created in $CERT_DIR/:"
 echo "  - ca.crt (CA certificate)"
 echo "  - server.crt (PostgreSQL server certificate)"
 echo "  - server.key (PostgreSQL server private key)"
+echo "  - client.crt (FastAPI client certificate)"
+echo "  - client.key (FastAPI client private key)"
 echo ""
 echo "To use these certificates:"
 echo "  1. Configure PostgreSQL to use server.crt and server.key"

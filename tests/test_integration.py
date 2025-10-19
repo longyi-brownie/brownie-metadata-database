@@ -1,4 +1,4 @@
-"""Integration tests to ensure database changes don't break the API."""
+"""Integration tests to ensure database schema works correctly."""
 
 import pytest
 import subprocess
@@ -6,19 +6,18 @@ import sys
 import os
 from pathlib import Path
 from testcontainers.postgres import PostgresContainer
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# Add the API project to the path
-api_project_path = Path(__file__).parent.parent.parent / "brownie-metadata-api"
-sys.path.insert(0, str(api_project_path))
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from database.models import Base
 from database.base import Base as DatabaseBase
 
 
-class TestDatabaseAPIIntegration:
-    """Test that database changes don't break the API."""
+class TestDatabaseSchema:
+    """Test that database schema works correctly."""
     
     @pytest.fixture(scope="class")
     def postgres_container(self):
@@ -66,11 +65,11 @@ class TestDatabaseAPIIntegration:
         assert result.returncode == 0, f"Migration failed: {result.stderr}"
         print(f"Migration output: {result.stdout}")
     
-    def test_api_can_import_models(self):
-        """Test that the API can import all database models."""
+    def test_can_import_models(self):
+        """Test that we can import all database models."""
         try:
-            # Test importing models from the API project
-            from app.models import (
+            # Test importing models from the database project
+            from database.models import (
                 Organization, Team, User, Incident, 
                 AgentConfig, Stats, Config,
                 UserRole, IncidentStatus, IncidentPriority, AgentType
@@ -85,39 +84,29 @@ class TestDatabaseAPIIntegration:
             assert hasattr(Stats, '__tablename__')
             assert hasattr(Config, '__tablename__')
             
-            print("✅ API can import all database models")
+            print("✅ Can import all database models")
             
         except ImportError as e:
-            pytest.fail(f"API cannot import database models: {e}")
+            pytest.fail(f"Cannot import database models: {e}")
     
-    def test_api_can_connect_to_database(self, test_db_url):
-        """Test that the API can connect to the database."""
+    def test_can_connect_to_database(self, test_db_url):
+        """Test that we can connect to the database."""
         try:
-            # Test database connection from API
-            from app.db import engine
-            from app.settings import settings
-            
-            # Override settings for test
-            original_dsn = settings.postgres_dsn
-            settings.postgres_dsn = test_db_url
-            
-            # Test connection
+            # Test database connection
+            engine = create_engine(test_db_url)
             with engine.connect() as conn:
-                result = conn.execute("SELECT 1")
+                result = conn.execute(text("SELECT 1"))
                 assert result.fetchone()[0] == 1
             
-            # Restore original settings
-            settings.postgres_dsn = original_dsn
-            
-            print("✅ API can connect to database")
+            print("✅ Can connect to database")
             
         except Exception as e:
-            pytest.fail(f"API cannot connect to database: {e}")
+            pytest.fail(f"Cannot connect to database: {e}")
     
-    def test_api_can_query_tables(self, test_db_url, test_db_session):
-        """Test that the API can query all tables."""
+    def test_can_query_tables(self, test_db_session):
+        """Test that we can query all tables."""
         try:
-            from app.models import Organization, Team, User, Incident, AgentConfig, Stats, Config
+            from database.models import Organization, Team, User, Incident, AgentConfig, Stats, Config
             
             # Test that we can query each table
             org_count = test_db_session.query(Organization).count()
@@ -137,16 +126,16 @@ class TestDatabaseAPIIntegration:
             assert isinstance(stats_count, int)
             assert isinstance(config_count, int)
             
-            print("✅ API can query all tables")
+            print("✅ Can query all tables")
             
         except Exception as e:
-            pytest.fail(f"API cannot query tables: {e}")
+            pytest.fail(f"Cannot query tables: {e}")
     
-    def test_api_can_create_records(self, test_db_session):
-        """Test that the API can create records in all tables."""
+    def test_can_create_records(self, test_db_session):
+        """Test that we can create records in all tables."""
         try:
-            from app.models import Organization, Team, User, Incident, AgentConfig, Stats, Config
-            from app.models import UserRole, IncidentStatus, IncidentPriority, AgentType
+            from database.models import Organization, Team, User, Incident, AgentConfig, Stats, Config
+            from database.models import UserRole, IncidentStatus, IncidentPriority, AgentType
             import uuid
             from datetime import datetime
             
@@ -250,48 +239,11 @@ class TestDatabaseAPIIntegration:
             # Commit all changes
             test_db_session.commit()
             
-            print("✅ API can create records in all tables")
+            print("✅ Can create records in all tables")
             
         except Exception as e:
             test_db_session.rollback()
-            pytest.fail(f"API cannot create records: {e}")
-    
-    def test_api_schemas_match_database(self):
-        """Test that API schemas match database models."""
-        try:
-            from app.schemas import (
-                OrganizationResponse, TeamResponse, UserResponse,
-                IncidentResponse, AgentConfigResponse, StatsResponse
-            )
-            from app.models import (
-                Organization, Team, User, Incident, AgentConfig, Stats
-            )
-            
-            # Test that schemas can be created from models
-            # This is a basic test - in practice, you'd test more thoroughly
-            
-            # Test that models have the expected fields
-            org_fields = set(Organization.__table__.columns.keys())
-            team_fields = set(Team.__table__.columns.keys())
-            user_fields = set(User.__table__.columns.keys())
-            
-            # Basic field existence checks
-            assert 'id' in org_fields
-            assert 'name' in org_fields
-            assert 'slug' in org_fields
-            
-            assert 'id' in team_fields
-            assert 'name' in team_fields
-            assert 'org_id' in team_fields
-            
-            assert 'id' in user_fields
-            assert 'email' in user_fields
-            assert 'username' in user_fields
-            
-            print("✅ API schemas match database models")
-            
-        except Exception as e:
-            pytest.fail(f"API schemas don't match database models: {e}")
+            pytest.fail(f"Cannot create records: {e}")
 
 
 class TestMigrationCompatibility:

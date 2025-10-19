@@ -1,161 +1,186 @@
-"""
-Backup scheduler using cron-like scheduling
-"""
+#!/usr/bin/env python3
+"""Backup scheduler for automated backup execution."""
 
-import schedule
+import os
+import sys
 import time
-import threading
+import signal
+import structlog
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Optional
+
+# Add src to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+try:
+    from croniter import croniter
+    CRONITER_AVAILABLE = True
+except ImportError:
+    CRONITER_AVAILABLE = False
 
 from .manager import BackupManager
 from .config import BackupConfig
 
+logger = structlog.get_logger(__name__)
+
 
 class BackupScheduler:
-    """Schedules and manages automated backups"""
+    """Scheduler for automated backup execution."""
     
-    def __init__(self, backup_manager: BackupManager):
-        self.backup_manager = backup_manager
-        self.scheduler_thread: Optional[threading.Thread] = None
-        self.running = False
-        self.schedule_config = backup_manager.config.schedule
-    
-    def start(self) -> None:
-        """Start the backup scheduler"""
-        if self.running:
-            print("Backup scheduler is already running")
-            return
-        
-        print(f"Starting backup scheduler with schedule: {self.schedule_config}")
-        
-        # Clear any existing jobs
-        schedule.clear()
-        
-        # Schedule the backup job
-        self._schedule_backup_job()
-        
-        # Start scheduler thread
-        self.running = True
-        self.scheduler_thread = threading.Thread(target=self._run_scheduler, daemon=True)
-        self.scheduler_thread.start()
-        
-        print("Backup scheduler started")
-    
-    def stop(self) -> None:
-        """Stop the backup scheduler"""
-        if not self.running:
-            print("Backup scheduler is not running")
-            return
-        
-        print("Stopping backup scheduler...")
+    def __init__(self, config: BackupConfig):
+        self.config = config
+        self.manager = BackupManager(config)
+        self.logger = logger.bind(scheduler="BackupScheduler")
         self.running = False
         
-        if self.scheduler_thread and self.scheduler_thread.is_alive():
-            self.scheduler_thread.join(timeout=5)
+        # Initialize cron iterator
+        if CRONITER_AVAILABLE:
+            self.cron_iter = croniter(config.schedule, datetime.now())
+            self.logger.info("Using croniter for schedule parsing", schedule=config.schedule)
+        else:
+            self.schedule_parts = self._parse_cron_schedule(config.schedule)
+            self.logger.warning("croniter not available, using simple schedule parsing", schedule=config.schedule)
         
-        schedule.clear()
-        print("Backup scheduler stopped")
-    
-    def run_backup_now(self) -> dict:
-        """Run backup immediately"""
-        print("Running immediate backup...")
-        return self.backup_manager.create_backup()
-    
-    def cleanup_old_backups(self) -> dict:
-        """Clean up old backups"""
-        print("Cleaning up old backups...")
-        return self.backup_manager.cleanup_old_backups()
-    
-    def get_next_backup_time(self) -> Optional[datetime]:
-        """Get the next scheduled backup time"""
-        jobs = schedule.get_jobs()
-        if jobs:
-            return jobs[0].next_run
-        return None
-    
-    def get_scheduler_status(self) -> dict:
-        """Get scheduler status information"""
+    def _parse_cron_schedule(self, schedule: str) -> dict:
+        """Parse cron schedule into parts."""
+        parts = schedule.split()
+        if len(parts) != 5:
+            raise ValueError(f"Invalid cron schedule format: {schedule}")
+        
         return {
-            "running": self.running,
-            "schedule": self.schedule_config,
-            "next_backup": self.get_next_backup_time(),
-            "backup_status": self.backup_manager.get_backup_status()
+            "minute": parts[0],
+            "hour": parts[1], 
+            "day": parts[2],
+            "month": parts[3],
+            "weekday": parts[4]
         }
     
-    def _schedule_backup_job(self) -> None:
-        """Schedule the backup job based on cron expression"""
-        # Parse cron expression (basic implementation)
-        # Format: "minute hour day month weekday"
-        # Example: "0 2 * * *" = daily at 2 AM
-        
-        parts = self.schedule_config.split()
-        if len(parts) != 5:
-            raise ValueError(f"Invalid cron expression: {self.schedule_config}")
-        
-        minute, hour, day, month, weekday = parts
-        
-        # Schedule based on the expression
-        if minute != "*" and hour != "*":
-            # Specific time
-            schedule.every().day.at(f"{hour.zfill(2)}:{minute.zfill(2)}").do(self._backup_job)
-        elif hour != "*":
-            # Specific hour
-            schedule.every().day.at(f"{hour.zfill(2)}:00").do(self._backup_job)
-        elif weekday != "*":
-            # Specific day of week
-            weekday_map = {
-                "0": schedule.every().sunday,
-                "1": schedule.every().monday,
-                "2": schedule.every().tuesday,
-                "3": schedule.every().wednesday,
-                "4": schedule.every().thursday,
-                "5": schedule.every().friday,
-                "6": schedule.every().saturday
-            }
-            if weekday in weekday_map:
-                weekday_map[weekday].at("02:00").do(self._backup_job)
-            else:
-                # Default to daily
-                schedule.every().day.at("02:00").do(self._backup_job)
+    def _should_run_backup(self, now: datetime) -> bool:
+        """Check if backup should run at the current time."""
+        if CRONITER_AVAILABLE:
+            # Use croniter for accurate cron parsing
+            return self.cron_iter.get_next(datetime) <= now
         else:
-            # Default to daily at 2 AM
-            schedule.every().day.at("02:00").do(self._backup_job)
+            # Simple implementation - check if current time matches schedule
+            if self.schedule_parts["minute"] != "*" and str(now.minute) != self.schedule_parts["minute"]:
+                return False
+                
+            if self.schedule_parts["hour"] != "*" and str(now.hour) != self.schedule_parts["hour"]:
+                return False
+                
+            # For simplicity, assume daily backups (day=*, month=*, weekday=*)
+            return True
     
-    def _backup_job(self) -> None:
-        """The actual backup job that gets scheduled"""
+    def run_backup(self) -> bool:
+        """Run a single backup."""
         try:
-            print(f"Starting scheduled backup at {datetime.now()}")
-            result = self.backup_manager.create_backup()
+            backup_name = f"backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+            self.logger.info("Starting scheduled backup", backup_name=backup_name)
             
-            if result["success"]:
-                print(f"Scheduled backup completed successfully: {result['backup_name']}")
-            else:
-                print(f"Scheduled backup failed: {result.get('error', 'Unknown error')}")
+            result = self.manager.create_backup(backup_name, verify=self.config.verify_backup)
             
-            # Clean up old backups after successful backup
-            if result["success"]:
-                cleanup_result = self.backup_manager.cleanup_old_backups()
-                if cleanup_result["success"]:
-                    print(f"Cleaned up {cleanup_result['deleted_count']} old backups")
-                else:
-                    print(f"Failed to clean up old backups: {cleanup_result.get('error', 'Unknown error')}")
-                    
+            self.logger.info("Scheduled backup completed successfully", 
+                           backup_name=backup_name,
+                           size=result.get('size'),
+                           duration=result.get('duration'))
+            return True
+            
         except Exception as e:
-            print(f"Error in scheduled backup job: {e}")
+            self.logger.error("Scheduled backup failed", error=str(e))
+            return False
     
-    def _run_scheduler(self) -> None:
-        """Run the scheduler loop"""
+    def run_cleanup(self) -> bool:
+        """Run cleanup of old backups."""
+        try:
+            self.logger.info("Starting scheduled cleanup")
+            deleted_count = self.manager.cleanup_old_backups()
+            self.logger.info("Scheduled cleanup completed", deleted_count=deleted_count)
+            return True
+            
+        except Exception as e:
+            self.logger.error("Scheduled cleanup failed", error=str(e))
+            return False
+    
+    def start(self):
+        """Start the scheduler."""
+        self.running = True
+        self.logger.info("Starting backup scheduler", schedule=self.config.schedule)
+        
+        # Set up signal handlers for graceful shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        
+        last_backup_hour = -1
+        last_cleanup_day = -1
+        
         while self.running:
             try:
-                schedule.run_pending()
-                time.sleep(60)  # Check every minute
-            except Exception as e:
-                print(f"Error in scheduler loop: {e}")
+                now = datetime.now()
+                
+                # Check if we should run backup
+                if self._should_run_backup(now):
+                    # Only run backup once per hour to avoid duplicates
+                    if now.hour != last_backup_hour:
+                        self.run_backup()
+                        last_backup_hour = now.hour
+                
+                # Run cleanup once per day
+                if now.day != last_cleanup_day:
+                    self.run_cleanup()
+                    last_cleanup_day = now.day
+                
+                # Sleep for 1 minute before checking again
                 time.sleep(60)
+                
+            except KeyboardInterrupt:
+                self.logger.info("Received interrupt signal, shutting down")
+                break
+            except Exception as e:
+                self.logger.error("Scheduler error", error=str(e))
+                time.sleep(60)  # Wait before retrying
+        
+        self.logger.info("Backup scheduler stopped")
+    
+    def stop(self):
+        """Stop the scheduler."""
+        self.running = False
+    
+    def _signal_handler(self, signum, frame):
+        """Handle shutdown signals."""
+        self.logger.info("Received signal", signal=signum)
+        self.stop()
 
 
-def create_backup_scheduler(config: BackupConfig) -> BackupScheduler:
-    """Factory function to create a backup scheduler"""
-    backup_manager = BackupManager(config)
-    return BackupScheduler(backup_manager)
+def main():
+    """Main entry point for the scheduler."""
+    # Configure logging
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer()
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+    
+    try:
+        config = BackupConfig()
+        scheduler = BackupScheduler(config)
+        scheduler.start()
+        return 0
+    except Exception as e:
+        logger.error("Scheduler failed to start", error=str(e))
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

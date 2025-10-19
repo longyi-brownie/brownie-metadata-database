@@ -5,6 +5,9 @@ set -e
 
 echo "Setting up PostgreSQL SSL and certificate authentication..."
 
+# Create directory for PostgreSQL config
+mkdir -p /etc/postgresql
+
 # Create pg_hba.conf for certificate authentication
 cat > /etc/postgresql/pg_hba.conf << 'EOF'
 # PostgreSQL Client Authentication Configuration File
