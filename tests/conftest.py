@@ -1,20 +1,22 @@
 """Pytest configuration and fixtures."""
 
 import os
-import pytest
-import uuid
-from typing import Generator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 
 # Add src to path
 import sys
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+import uuid
+from typing import Generator
+
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from database.base import Base
-from database.models import Organization, Team, User, Incident, AgentConfig, Stats
 from database.config import DatabaseSettings
+from database.models import AgentConfig, Incident, Organization, Stats, Team, User
 
 
 @pytest.fixture(scope="session")
@@ -30,7 +32,7 @@ def test_engine(test_database_url: str):
         test_database_url,
         poolclass=StaticPool,
         connect_args={"check_same_thread": False},
-        echo=False
+        echo=False,
     )
     return engine
 
@@ -40,11 +42,11 @@ def test_db(test_engine) -> Generator[Session, None, None]:
     """Create test database session."""
     # Create all tables
     Base.metadata.create_all(bind=test_engine)
-    
+
     # Create session
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
     session = SessionLocal()
-    
+
     try:
         yield session
     finally:
@@ -90,7 +92,9 @@ def sample_organization(test_db: Session, sample_org_id: uuid.UUID) -> Organizat
 
 
 @pytest.fixture
-def sample_team(test_db: Session, sample_team_id: uuid.UUID, sample_organization: Organization) -> Team:
+def sample_team(
+    test_db: Session, sample_team_id: uuid.UUID, sample_organization: Organization
+) -> Team:
     """Create a sample team for testing."""
     team = Team(
         id=sample_team_id,
@@ -108,7 +112,12 @@ def sample_team(test_db: Session, sample_team_id: uuid.UUID, sample_organization
 
 
 @pytest.fixture
-def sample_user(test_db: Session, sample_user_id: uuid.UUID, sample_organization: Organization, sample_team: Team) -> User:
+def sample_user(
+    test_db: Session,
+    sample_user_id: uuid.UUID,
+    sample_organization: Organization,
+    sample_team: Team,
+) -> User:
     """Create a sample user for testing."""
     user = User(
         id=sample_user_id,
@@ -128,7 +137,12 @@ def sample_user(test_db: Session, sample_user_id: uuid.UUID, sample_organization
 
 
 @pytest.fixture
-def sample_incident(test_db: Session, sample_organization: Organization, sample_team: Team, sample_user: User) -> Incident:
+def sample_incident(
+    test_db: Session,
+    sample_organization: Organization,
+    sample_team: Team,
+    sample_user: User,
+) -> Incident:
     """Create a sample incident for testing."""
     incident = Incident(
         org_id=sample_organization.id,
@@ -147,7 +161,9 @@ def sample_incident(test_db: Session, sample_organization: Organization, sample_
 
 
 @pytest.fixture
-def sample_agent_config(test_db: Session, sample_organization: Organization, sample_team: Team) -> AgentConfig:
+def sample_agent_config(
+    test_db: Session, sample_organization: Organization, sample_team: Team
+) -> AgentConfig:
     """Create a sample agent config for testing."""
     config = AgentConfig(
         org_id=sample_organization.id,
@@ -169,7 +185,9 @@ def sample_agent_config(test_db: Session, sample_organization: Organization, sam
 
 
 @pytest.fixture
-def sample_stats(test_db: Session, sample_organization: Organization, sample_team: Team) -> Stats:
+def sample_stats(
+    test_db: Session, sample_organization: Organization, sample_team: Team
+) -> Stats:
     """Create sample stats for testing."""
     stats = Stats(
         org_id=sample_organization.id,

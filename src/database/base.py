@@ -14,7 +14,7 @@ Base = declarative_base()
 
 class TimestampMixin:
     """Mixin for created_at and updated_at timestamps."""
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -30,7 +30,7 @@ class TimestampMixin:
 
 class OrgScopedMixin:
     """Mixin for organization-scoped entities."""
-    
+
     org_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         nullable=False,
@@ -41,7 +41,7 @@ class OrgScopedMixin:
 
 class AuditMixin:
     """Mixin for audit logging on mutations."""
-    
+
     created_by: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         nullable=True,
@@ -56,7 +56,7 @@ class AuditMixin:
 
 class VersionMixin:
     """Mixin for optimistic concurrency control."""
-    
+
     version: Mapped[int] = mapped_column(
         default=1,
         nullable=False,
@@ -66,7 +66,7 @@ class VersionMixin:
 
 class IdempotencyMixin:
     """Mixin for idempotency key support."""
-    
+
     idempotency_key: Mapped[str] = mapped_column(
         String(255),
         nullable=True,
@@ -78,7 +78,7 @@ class IdempotencyMixin:
 
 class SoftDeleteMixin:
     """Mixin for soft delete functionality."""
-    
+
     deleted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -93,19 +93,18 @@ class SoftDeleteMixin:
 
 class BaseModel(Base, TimestampMixin):
     """Base model with common fields."""
-    
+
     __abstract__ = True
-    
+
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
         default=uuid.uuid4,
         nullable=False,
     )
-    
+
     def to_dict(self) -> dict[str, Any]:
         """Convert model to dictionary."""
         return {
-            column.name: getattr(self, column.name)
-            for column in self.__table__.columns
+            column.name: getattr(self, column.name) for column in self.__table__.columns
         }

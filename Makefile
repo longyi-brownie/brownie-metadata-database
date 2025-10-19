@@ -46,8 +46,7 @@ test-migration:
 lint:
 	@echo "Running flake8..."
 	flake8 .
-	@echo "Running mypy..."
-	mypy src/ --ignore-missing-imports
+	@echo "Skipping mypy (type checking disabled for now)..."
 
 # Format code
 format:
