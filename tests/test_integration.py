@@ -33,8 +33,10 @@ class TestDatabaseSchema:
     @pytest.fixture(scope="class")
     def test_engine(self, test_db_url):
         """Create test database engine."""
+        # Use psycopg driver instead of psycopg2
+        test_db_url = test_db_url.replace("postgresql://", "postgresql+psycopg://")
         engine = create_engine(test_db_url)
-        Base.metadata.create_all(bind=engine)
+        DatabaseBase.metadata.create_all(bind=engine)
         return engine
 
     @pytest.fixture(scope="class")
@@ -103,6 +105,8 @@ class TestDatabaseSchema:
         """Test that we can connect to the database."""
         try:
             # Test database connection
+            # Use psycopg driver instead of psycopg2
+            test_db_url = test_db_url.replace("postgresql://", "postgresql+psycopg://")
             engine = create_engine(test_db_url)
             with engine.connect() as conn:
                 result = conn.execute(text("SELECT 1"))
@@ -299,6 +303,8 @@ class TestMigrationCompatibility:
         # Check that all expected tables exist
         from sqlalchemy import create_engine, text
 
+        # Use psycopg driver instead of psycopg2
+        test_db_url = test_db_url.replace("postgresql://", "postgresql+psycopg://")
         engine = create_engine(test_db_url)
 
         with engine.connect() as conn:
@@ -335,6 +341,8 @@ class TestMigrationCompatibility:
         """Test that migration creates all expected indexes."""
         from sqlalchemy import create_engine, text
 
+        # Use psycopg driver instead of psycopg2
+        test_db_url = test_db_url.replace("postgresql://", "postgresql+psycopg://")
         engine = create_engine(test_db_url)
 
         with engine.connect() as conn:
