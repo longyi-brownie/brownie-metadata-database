@@ -43,11 +43,26 @@ clean:
 	rm -rf .coverage htmlcov/ .pytest_cache/ .mypy_cache/
 
 # Docker commands
-docker-up:
+docker-up: setup-certs
 	docker-compose up -d
 
 docker-down:
 	docker-compose down
+
+# Setup certificates for development
+setup-certs:
+	@echo "Setting up development certificates..."
+	@if [ ! -d "dev-certs" ]; then \
+		./scripts/setup-dev-certs.sh; \
+	else \
+		echo "Certificates already exist in dev-certs/"; \
+	fi
+
+# Full setup with certificates and database
+setup-full: setup-certs docker-up
+	@echo "Waiting for database to be ready..."
+	@sleep 10
+	@echo "Full setup complete! Database is running with certificate authentication."
 
 # Development setup
 setup: install migrate

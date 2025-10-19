@@ -28,6 +28,26 @@ class DatabaseManager:
         # Build database URL
         database_url = self.settings.database_url
         
+        # Add SSL parameters for certificate authentication
+        connect_args = {}
+        ssl_mode = os.getenv("DB_SSL_MODE", "require")
+        
+        if ssl_mode in ["require", "verify-ca", "verify-full"]:
+            connect_args["sslmode"] = ssl_mode
+            
+            # Add certificate paths if available
+            cert_dir = os.getenv("CERT_DIR", "/certs")
+            client_cert = os.path.join(cert_dir, "client.crt")
+            client_key = os.path.join(cert_dir, "client.key")
+            ca_cert = os.path.join(cert_dir, "ca.crt")
+            
+            if os.path.exists(client_cert) and os.path.exists(client_key):
+                connect_args["sslcert"] = client_cert
+                connect_args["sslkey"] = client_key
+                
+            if os.path.exists(ca_cert):
+                connect_args["sslrootcert"] = ca_cert
+        
         engine = create_engine(
             database_url,
             poolclass=QueuePool,
@@ -36,6 +56,7 @@ class DatabaseManager:
             pool_timeout=self.settings.pool_timeout,
             pool_recycle=self.settings.pool_recycle,
             echo=False,  # Set to True for SQL debugging
+            connect_args=connect_args,
         )
         
         # Add connection event listeners for logging
