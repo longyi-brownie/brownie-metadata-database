@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 import pytest
 
-from src.logging.audit import AuditLogger
-from src.logging.config import LoggingConfig, configure_logging
-from src.logging.performance import PerformanceLogger
+from src.logging_config.audit import AuditLogger
+from src.logging_config.config import LoggingConfig, configure_logging
+from src.logging_config.performance import PerformanceLogger
 
 
 class TestLoggingConfig:

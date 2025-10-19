@@ -13,8 +13,7 @@ from testcontainers.postgres import PostgresContainer
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from database.base import Base as DatabaseBase
-from database.models import Base
+from database.base import Base
 
 
 class TestDatabaseSchema:
