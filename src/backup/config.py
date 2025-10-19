@@ -41,7 +41,6 @@ class BackupConfig(BaseSettings):
     
     class Config:
         env_prefix = "BACKUP_"
-        env_file = ".env"
     
     @property
     def database_url(self) -> str:

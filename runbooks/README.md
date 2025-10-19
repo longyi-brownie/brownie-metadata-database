@@ -19,14 +19,14 @@ This directory contains comprehensive operational runbooks for managing the Brow
 ## Quick Reference
 
 ### Emergency Procedures
-1. **Database Down**: Check [Disaster Recovery](RUNBOOK-disaster-recovery.md#emergency-restore)
+1. **Database Down**: Check [Disaster Recovery](RUNBOOK-disaster-recovery.md#complete-database-loss)
 2. **Migration Failed**: See [Database Migration](RUNBOOK-database-migration.md#rollback-procedures)
-3. **Performance Issues**: Review [Scaling Operations](RUNBOOK-scaling-operations.md#performance-troubleshooting)
+3. **Performance Issues**: Review [Scaling Operations](RUNBOOK-scaling-operations.md#performance-monitoring)
 
 ### Change Management
 1. **Schema Changes**: Follow [Database Migration](RUNBOOK-database-migration.md) process
 2. **API Compatibility**: Use [Database-API Changes](RUNBOOK-db-api-changes.md) workflow
-3. **Production Deployment**: See [Disaster Recovery](RUNBOOK-disaster-recovery.md#deployment-procedures)
+3. **Production Deployment**: See [Disaster Recovery](RUNBOOK-disaster-recovery.md#full-system-recovery)
 
 ## Contributing
 

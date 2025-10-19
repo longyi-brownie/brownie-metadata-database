@@ -54,7 +54,22 @@ git clone https://github.com/longyi-brownie/brownie-metadata-database.git
 cd brownie-metadata-database
 ```
 
-### 2. Start Database & Monitoring Services
+### 2. Generate SSL Certificates
+
+**Required before starting services** - Generate development certificates for SSL/TLS:
+
+```bash
+./scripts/setup-dev-certs.sh
+```
+
+This creates:
+- `dev-certs/ca.crt` - Certificate Authority
+- `dev-certs/server.crt` - PostgreSQL server certificate  
+- `dev-certs/server.key` - PostgreSQL server private key
+- `dev-certs/client.crt` - Client certificate for database connections
+- `dev-certs/client.key` - Client private key for database connections
+
+### 3. Start Database & Monitoring Services
 
 ```bash
 docker compose up -d
@@ -68,7 +83,7 @@ This will start:
 - **Prometheus** - Metrics collection and alerting
 - **Grafana** - Enterprise dashboards ready for copy-paste
 
-### 3. Verify Everything Works
+### 4. Verify Everything Works
 
 ```bash
 # Check all services are running
@@ -88,7 +103,7 @@ open http://localhost:3000
 # Login: admin/admin
 ```
 
-### 4. Access Services
+### 5. Access Services
 
 - **PostgreSQL**: localhost:5432 (certificate auth required)
 - **Redis**: localhost:6379
@@ -115,8 +130,7 @@ brownie-metadata-database/
 │   ├── setup-dev-certs.sh    # Certificate generation
 │   ├── setup-postgres-ssl.sh # SSL configuration
 │   ├── pg_hba.conf           # PostgreSQL auth config
-│   ├── postgresql.conf       # PostgreSQL server config
-│   └── env.example           # Environment template
+│   └── postgresql.conf       # PostgreSQL server config
 ├── src/                       # Core database code
 │   ├── certificates.py       # Server certificate management
 │   └── database/             # SQLAlchemy models and connection

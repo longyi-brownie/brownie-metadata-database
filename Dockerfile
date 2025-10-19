@@ -16,6 +16,9 @@ COPY pyproject.toml ./
 # Install Python dependencies
 RUN pip install --no-cache-dir -e .
 
+# Install psycopg2 for alembic compatibility
+RUN pip install --no-cache-dir psycopg2-binary
+
 # Copy application code
 COPY . .
 

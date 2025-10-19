@@ -1,7 +1,6 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Brownie Business Metrics",
+  "id": null,
+  "title": "Brownie Business Metrics",
     "tags": ["brownie", "business", "enterprise"],
     "style": "dark",
     "timezone": "browser",
@@ -139,4 +138,3 @@
     },
     "refresh": "30s"
   }
-}

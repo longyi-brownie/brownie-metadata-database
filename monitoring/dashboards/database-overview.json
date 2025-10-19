@@ -1,7 +1,6 @@
 {
-  "dashboard": {
-    "id": null,
-    "title": "Brownie Database Overview",
+  "id": null,
+  "title": "Brownie Database Overview",
     "tags": ["brownie", "database", "enterprise"],
     "style": "dark",
     "timezone": "browser",
@@ -150,4 +149,3 @@
     },
     "refresh": "30s"
   }
-}

@@ -32,6 +32,11 @@ test-integration:
 	@echo "Running integration tests..."
 	pytest tests/test_integration.py -v
 
+# Run comprehensive Docker integration tests
+test-docker-integration:
+	@echo "Running comprehensive Docker integration tests..."
+	pytest tests/test_docker_integration.py::TestDockerStackIntegration -v
+
 # Run migration tests
 test-migration:
 	@echo "Testing migration compatibility..."
@@ -100,6 +105,12 @@ setup-full: setup-certs docker-up
 	@echo "Waiting for database to be ready..."
 	@sleep 10
 	@echo "Full setup complete! Database is running with certificate authentication."
+	@echo ""
+	@echo "✅ All services started successfully!"
+	@echo "📊 Grafana: http://localhost:3000 (admin/admin)"
+	@echo "📈 Prometheus: http://localhost:9090"
+	@echo "🗄️  PostgreSQL: localhost:5432 (certificate auth required)"
+	@echo "🔄 Redis: localhost:6379"
 
 # Development setup
 setup: install migrate

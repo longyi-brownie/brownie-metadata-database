@@ -86,6 +86,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - METRICS_PORT=9091
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
     volumes:
       - ./dev-certs:/certs:ro
       - ./monitoring/dashboards:/app/dashboards:ro
@@ -154,6 +156,8 @@ services:
       - BACKUP_RETENTION_DAYS=30
       - BACKUP_COMPRESSION=true
       - BACKUP_ENCRYPTION=true
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
     volumes:
       - ./dev-certs:/certs:ro
       - backup_data:/backups
