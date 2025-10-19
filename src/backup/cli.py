@@ -18,7 +18,7 @@ from .manager import BackupManager
 logger = structlog.get_logger(__name__)
 
 
-def main():
+def main() -> int:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(description="Brownie Metadata Database Backup")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -61,12 +61,12 @@ def main():
     # Configure centralized logging
     from ..logging.config import LoggingConfig, configure_logging
 
-    config = LoggingConfig()
-    configure_logging(config)
+    logging_config = LoggingConfig()
+    configure_logging(logging_config)
 
     try:
-        config = BackupConfig()
-        manager = BackupManager(config)
+        backup_config = BackupConfig()
+        manager = BackupManager(backup_config)
 
         if args.command == "backup":
             return backup_command(manager, args)
@@ -87,7 +87,7 @@ def main():
         return 1
 
 
-def backup_command(manager: BackupManager, args) -> int:
+def backup_command(manager: BackupManager, args: argparse.Namespace) -> int:
     """Create a backup."""
     backup_name = args.name or f"backup-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
 
@@ -109,7 +109,7 @@ def backup_command(manager: BackupManager, args) -> int:
         return 1
 
 
-def list_command(manager: BackupManager, args) -> int:
+def list_command(manager: BackupManager, args: argparse.Namespace) -> int:
     """List available backups."""
     try:
         backups = manager.list_backups(limit=args.limit)
@@ -136,7 +136,7 @@ def list_command(manager: BackupManager, args) -> int:
         return 1
 
 
-def restore_command(manager: BackupManager, args) -> int:
+def restore_command(manager: BackupManager, args: argparse.Namespace) -> int:
     """Restore from backup."""
     if not args.force:
         confirm = input(
@@ -163,7 +163,7 @@ def restore_command(manager: BackupManager, args) -> int:
         return 1
 
 
-def cleanup_command(manager: BackupManager, args) -> int:
+def cleanup_command(manager: BackupManager, args: argparse.Namespace) -> int:
     """Clean up old backups."""
     try:
         if args.dry_run:
@@ -187,7 +187,7 @@ def cleanup_command(manager: BackupManager, args) -> int:
         return 1
 
 
-def status_command(manager: BackupManager, args) -> int:
+def status_command(manager: BackupManager, args: argparse.Namespace) -> int:
     """Show backup status."""
     try:
         status = manager.get_status()
@@ -216,11 +216,12 @@ def format_size(size_bytes: int) -> str:
 
     size_names = ["B", "KB", "MB", "GB", "TB"]
     i = 0
-    while size_bytes >= 1024 and i < len(size_names) - 1:
-        size_bytes /= 1024.0
+    size_float = float(size_bytes)
+    while size_float >= 1024 and i < len(size_names) - 1:
+        size_float /= 1024.0
         i += 1
 
-    return f"{size_bytes:.1f} {size_names[i]}"
+    return f"{size_float:.1f} {size_names[i]}"
 
 
 if __name__ == "__main__":

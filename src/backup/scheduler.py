@@ -118,7 +118,7 @@ class BackupScheduler:
             self.logger.error("Scheduled cleanup failed", error=str(e))
             return False
 
-    def start(self):
+    def start(self) -> None:
         """Start the scheduler."""
         self.running = True
         self.logger.info("Starting backup scheduler", schedule=self.config.schedule)
@@ -158,27 +158,27 @@ class BackupScheduler:
 
         self.logger.info("Backup scheduler stopped")
 
-    def stop(self):
+    def stop(self) -> None:
         """Stop the scheduler."""
         self.running = False
 
-    def _signal_handler(self, signum, frame):
+    def _signal_handler(self, signum: int, frame) -> None:
         """Handle shutdown signals."""
         self.logger.info("Received signal", signal=signum)
         self.stop()
 
 
-def main():
+def main() -> int:
     """Main entry point for the scheduler."""
     # Configure centralized logging
     from ..logging.config import LoggingConfig, configure_logging
 
-    config = LoggingConfig()
-    configure_logging(config)
+    logging_config = LoggingConfig()
+    configure_logging(logging_config)
 
     try:
-        config = BackupConfig()
-        scheduler = BackupScheduler(config)
+        backup_config = BackupConfig()
+        scheduler = BackupScheduler(backup_config)
         scheduler.start()
         return 0
     except Exception as e:

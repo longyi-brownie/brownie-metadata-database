@@ -46,7 +46,7 @@ test-migration:
 lint:
 	@echo "Running flake8..."
 	flake8 .
-	@echo "Skipping mypy (type checking disabled for now)..."
+	@echo "Skipping mypy (type checking disabled - focus on functionality)"
 
 # Format code
 format:

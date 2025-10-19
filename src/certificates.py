@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional
 class ServerCertificateManager:
     """Manages PostgreSQL server certificates from Vault or local files."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.vault_enabled = os.getenv("VAULT_ENABLED", "false").lower() == "true"
         self.vault_url = os.getenv("VAULT_URL")
         self.vault_token = os.getenv("VAULT_TOKEN")
@@ -57,7 +57,7 @@ class ServerCertificateManager:
                 # Decode if base64 encoded
                 try:
                     return base64.b64decode(cert_content).decode("utf-8")
-                except:
+                except Exception:
                     return cert_content
 
             return None
