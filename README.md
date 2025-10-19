@@ -57,8 +57,8 @@ graph TB
 # Generate development certificates for FastAPI server
 ./scripts/setup-dev-certs.sh
 
-# Copy client certificates to your FastAPI server project
-cp fastapi-certs/fastapi-client.* /path/to/your/fastapi-server/certs/
+# Client certificates are handled by the FastAPI application
+# No need to copy certificates - they're managed separately
 
 ```
 
@@ -88,7 +88,7 @@ export DB_MTLS_ENABLED=true  # Enable mTLS for production
 
 **✅ Automated Setup (Recommended):**
 
-**Docker Compose:**
+**Docker Compose (Development):**
 ```bash
 # 1. Generate certificates
 ./scripts/setup-dev-certs.sh
@@ -102,7 +102,7 @@ docker compose up -d
 # - SSL certificates mounted
 ```
 
-**Kubernetes:**
+**Kubernetes (Production):**
 ```bash
 # 1. Apply PostgreSQL configuration
 kubectl apply -f k8s/postgres-config.yaml
@@ -134,6 +134,122 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server
 - ✅ **pg_hba.conf** - Certificate authentication configuration
 - ✅ **Certificate Mounting** - Server certificates in containers
 - ✅ **Future Tables** - Permissions for Alembic migrations
+
+**Docker Compose (Development) - Detailed:**
+
+1. **Clone and start the services:**
+```bash
+   git clone https://github.com/longyi-brownie/brownie-metadata-database
+   cd brownie-metadata-database
+   docker compose up -d
+   ```
+
+2. **Verify the services are running:**
+```bash
+   docker compose ps
+```
+
+3. **Check the application:**
+```bash
+   curl http://localhost:8000/health
+   ```
+
+**Docker Infrastructure:**
+```mermaid
+graph TB
+    subgraph "Docker Compose"
+        A[PostgreSQL :5432]
+        B[Redis :6379]
+        C[Prometheus :9090]
+        D[Grafana :3000]
+        E[Backup Service]
+        F[Migration Service]
+    end
+    
+    subgraph "External Storage"
+        G[S3/GCS/Azure]
+    end
+    
+    E -->|Backup| G
+    F -->|Schema Updates| A
+    A -->|Metrics| C
+    C -->|Dashboards| D
+    
+    style A fill:#e8f5e8
+    style E fill:#fff2cc
+    style F fill:#fff2cc
+```
+
+**Available Components:**
+- ✅ **PostgreSQL** - Primary database
+- ✅ **Redis** - Caching and sessions
+- ✅ **Prometheus** - Metrics collection
+- ✅ **Grafana** - Metrics visualization
+- ✅ **Backup Service** - Automated database backups
+- ✅ **Migration Service** - Database schema updates
+
+**Future Components:**
+- 🔄 **Read Replicas** - For read scaling (planned)
+- 🔄 **Custom Metrics Scraper** - PostgreSQL-specific metrics (planned)
+
+**Kubernetes (Production) - Detailed:**
+
+1. **Deploy to Kubernetes:**
+```bash
+   kubectl apply -k k8s/
+```
+
+2. **Check deployment status:**
+```bash
+   kubectl get pods -n brownie-metadata
+   ```
+
+3. **Access the application:**
+```bash
+   kubectl port-forward -n brownie-metadata svc/brownie-metadata-app 8000:8000
+   curl http://localhost:8000/health
+   ```
+
+**Kubernetes Architecture:**
+```mermaid
+graph TB
+    subgraph "Kubernetes Cluster"
+        subgraph "brownie-metadata namespace"
+            A[App Pods] --> B[PostgreSQL Primary]
+            A --> C[PostgreSQL Replicas]
+            A --> D[Redis Cluster]
+            A --> E[PgBouncer]
+        end
+        
+        subgraph "Monitoring"
+            F[Prometheus] --> A
+            G[Grafana] --> F
+            H[AlertManager] --> F
+        end
+        
+        subgraph "Backup"
+            I[Backup CronJob] --> J[Cloud Storage]
+        end
+    end
+```
+
+**Helm Charts (Advanced):**
+
+For production deployments with custom configurations:
+
+```bash
+# Install with Helm
+helm install brownie-metadata-db ./k8s/helm \
+  --namespace brownie-metadata \
+  --create-namespace \
+  --set database.replicas=3 \
+  --set app.replicas=5
+
+# Scale the deployment
+helm upgrade brownie-metadata-db ./k8s/helm \
+  --set app.replicas=10 \
+  --set database.patroni.replicas=5
+```
 
 ## Configuration
 
@@ -216,128 +332,12 @@ data:
 ```bash
 # Option 1: Create from local files (development)
 kubectl create secret generic brownie-metadata-secrets \
-  --from-file=database-client-cert=dev-certs/client.crt \
-  --from-file=database-client-key=dev-certs/client.key \
+  --from-file=database-server-cert=dev-certs/server.crt \
+  --from-file=database-server-key=dev-certs/server.key \
   --from-file=database-ca-cert=dev-certs/ca.crt
 
 # Option 2: Use Vault (production)
 # Certificates automatically loaded from Vault via CertificateManager
-```
-
-### Docker Compose (Development)
-
-1. **Clone and start the services:**
-```bash
-   git clone https://github.com/longyi-brownie/brownie-metadata-database
-   cd brownie-metadata-database
-   docker compose up -d
-   ```
-
-2. **Verify the services are running:**
-```bash
-   docker compose ps
-```
-
-3. **Check the application:**
-```bash
-   curl http://localhost:8000/health
-   ```
-
-**Docker Infrastructure:**
-```mermaid
-graph TB
-    subgraph "Docker Compose"
-        A[PostgreSQL :5432]
-        B[Redis :6379]
-        C[Prometheus :9090]
-        D[Grafana :3000]
-        E[Backup Service]
-        F[Migration Service]
-    end
-    
-    subgraph "External Storage"
-        G[S3/GCS/Azure]
-    end
-    
-    E -->|Backup| G
-    F -->|Schema Updates| A
-    A -->|Metrics| C
-    C -->|Dashboards| D
-    
-    style A fill:#e8f5e8
-    style E fill:#fff2cc
-    style F fill:#fff2cc
-```
-
-**Available Components:**
-- ✅ **PostgreSQL** - Primary database
-- ✅ **Redis** - Caching and sessions
-- ✅ **Prometheus** - Metrics collection
-- ✅ **Grafana** - Metrics visualization
-- ✅ **Backup Service** - Automated database backups
-- ✅ **Migration Service** - Database schema updates
-
-**Future Components:**
-- 🔄 **Read Replicas** - For read scaling (planned)
-- 🔄 **Custom Metrics Scraper** - PostgreSQL-specific metrics (planned)
-
-### Kubernetes (Production)
-
-1. **Deploy to Kubernetes:**
-```bash
-   kubectl apply -k k8s/
-```
-
-2. **Check deployment status:**
-```bash
-   kubectl get pods -n brownie-metadata
-   ```
-
-3. **Access the application:**
-```bash
-   kubectl port-forward -n brownie-metadata svc/brownie-metadata-app 8000:8000
-   curl http://localhost:8000/health
-   ```
-
-**Kubernetes Architecture:**
-```mermaid
-graph TB
-    subgraph "Kubernetes Cluster"
-        subgraph "brownie-metadata namespace"
-            A[App Pods] --> B[PostgreSQL Primary]
-            A --> C[PostgreSQL Replicas]
-            A --> D[Redis Cluster]
-            A --> E[PgBouncer]
-        end
-        
-        subgraph "Monitoring"
-            F[Prometheus] --> A
-            G[Grafana] --> F
-            H[AlertManager] --> F
-        end
-        
-        subgraph "Backup"
-            I[Backup CronJob] --> J[Cloud Storage]
-        end
-    end
-```
-
-### Helm Charts (Advanced)
-
-For production deployments with custom configurations:
-
-```bash
-# Install with Helm
-helm install brownie-metadata-db ./k8s/helm \
-  --namespace brownie-metadata \
-  --create-namespace \
-  --set database.replicas=3 \
-  --set app.replicas=5
-
-# Scale the deployment
-helm upgrade brownie-metadata-db ./k8s/helm \
-  --set app.replicas=10 \
-  --set database.patroni.replicas=5
 ```
 
 ## Database Connection

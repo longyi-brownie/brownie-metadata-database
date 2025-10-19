@@ -1,7 +1,8 @@
 """
-Certificate management for database connections.
+Server-side certificate management for PostgreSQL.
 
-Supports both Vault (production) and local files (development) for certificate storage.
+Manages CA and server certificates for PostgreSQL SSL/TLS configuration.
+Client certificates are handled by the FastAPI application.
 """
 
 import os
@@ -10,8 +11,8 @@ from typing import Optional, Dict, Any
 from pathlib import Path
 
 
-class CertificateManager:
-    """Manages database certificates from Vault or local files."""
+class ServerCertificateManager:
+    """Manages PostgreSQL server certificates from Vault or local files."""
     
     def __init__(self):
         self.vault_enabled = os.getenv("VAULT_ENABLED", "false").lower() == "true"
@@ -27,7 +28,7 @@ class CertificateManager:
         Get certificate content from Vault or local file.
         
         Args:
-            cert_type: Type of certificate (client_cert, client_key, ca_cert)
+            cert_type: Type of certificate (server_cert, server_key, ca_cert)
             
         Returns:
             Certificate content as string, or None if not found
@@ -69,8 +70,8 @@ class CertificateManager:
     def _get_from_local_file(self, cert_type: str) -> Optional[str]:
         """Get certificate from local file."""
         cert_file_map = {
-            "client_cert": "client.crt",
-            "client_key": "client.key", 
+            "server_cert": "server.crt",
+            "server_key": "server.key", 
             "ca_cert": "ca.crt"
         }
         
@@ -85,70 +86,65 @@ class CertificateManager:
         
         return None
     
-    def get_database_ssl_config(self, mtls_enabled: bool = False) -> Dict[str, Any]:
+    def get_postgres_ssl_config(self) -> Dict[str, Any]:
         """
-        Get complete SSL configuration for database connection.
-        
-        Args:
-            mtls_enabled: Enable mutual TLS (both client and server verify certificates)
+        Get SSL configuration for PostgreSQL server.
         
         Returns:
-            Dictionary with SSL configuration parameters
+            Dictionary with PostgreSQL SSL configuration parameters
         """
-        if mtls_enabled:
-            ssl_config = {
-                "sslmode": "verify-full"  # Full verification for mTLS
-            }
-        else:
-            ssl_config = {
-                "sslmode": "require"  # Basic SSL for development
-            }
+        ssl_config = {
+            "ssl": "on",
+            "ssl_cert_file": None,
+            "ssl_key_file": None,
+            "ssl_ca_file": None
+        }
         
         if self.vault_enabled or self._has_local_certs():
-            # Get certificates
-            client_cert = self.get_certificate("client_cert")
-            client_key = self.get_certificate("client_key")
+            # Get server certificates
+            server_cert = self.get_certificate("server_cert")
+            server_key = self.get_certificate("server_key")
             ca_cert = self.get_certificate("ca_cert")
             
-            if client_cert and client_key:
-                # Write certificates to temporary files for psycopg2
-                cert_dir = Path("/tmp/brownie-certs")
+            if server_cert and server_key:
+                # Write certificates to temporary files for PostgreSQL
+                cert_dir = Path("/tmp/brownie-server-certs")
                 cert_dir.mkdir(exist_ok=True)
                 
-                (cert_dir / "client.crt").write_text(client_cert)
-                (cert_dir / "client.key").write_text(client_key)
+                (cert_dir / "server.crt").write_text(server_cert)
+                (cert_dir / "server.key").write_text(server_key)
                 
                 ssl_config.update({
-                    "sslcert": str(cert_dir / "client.crt"),
-                    "sslkey": str(cert_dir / "client.key")
+                    "ssl_cert_file": str(cert_dir / "server.crt"),
+                    "ssl_key_file": str(cert_dir / "server.key")
                 })
                 
                 if ca_cert:
                     (cert_dir / "ca.crt").write_text(ca_cert)
-                    ssl_config["sslrootcert"] = str(cert_dir / "ca.crt")
+                    ssl_config["ssl_ca_file"] = str(cert_dir / "ca.crt")
         
         return ssl_config
     
     def _has_local_certs(self) -> bool:
-        """Check if local certificates exist."""
+        """Check if local server certificates exist."""
         cert_dir = Path(self.local_cert_dir)
-        return (cert_dir / "client.crt").exists() and (cert_dir / "client.key").exists()
+        return (cert_dir / "server.crt").exists() and (cert_dir / "server.key").exists()
     
     def validate_certificates(self) -> Dict[str, bool]:
         """
-        Validate that required certificates are available.
+        Validate that required server certificates are available.
         
         Returns:
             Dictionary with validation results for each certificate type
         """
         results = {}
         
-        for cert_type in ["client_cert", "client_key", "ca_cert"]:
+        for cert_type in ["server_cert", "server_key", "ca_cert"]:
             cert_content = self.get_certificate(cert_type)
             results[cert_type] = cert_content is not None
         
         return results
 
 
-# Global certificate manager instance
-cert_manager = CertificateManager()
+# Global server certificate manager instance
+server_cert_manager = ServerCertificateManager()
