@@ -26,8 +26,7 @@ services:
       - ./scripts/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
       # Custom entrypoint script
       - ./scripts/postgres-entrypoint.sh:/scripts/postgres-entrypoint.sh:ro
-    entrypoint: ["/docker-entrypoint.sh"]
-    command: ["/scripts/postgres-entrypoint.sh"]
+    entrypoint: ["/scripts/postgres-entrypoint.sh"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brownie -d brownie_metadata || pg_isready -U brownie-fastapi-server -d brownie_metadata"]
       interval: 10s

@@ -1,9 +1,6 @@
 #!/bin/bash
 set -e
 
-# Make sure the script is executable
-chmod +x /scripts/postgres-entrypoint.sh
-
 # Copy certificates to a location where postgres user can own them
 if [ -f "/var/lib/postgresql/server.crt" ]; then
     cp /var/lib/postgresql/server.crt /var/lib/postgresql/data/server.crt
@@ -23,11 +20,10 @@ if [ -f "/var/lib/postgresql/ca.crt" ]; then
     chmod 644 /var/lib/postgresql/data/ca.crt
 fi
 
-# Start PostgreSQL with the copied certificates
-exec postgres \
+# Use the original PostgreSQL entrypoint with our custom command
+exec /usr/local/bin/docker-entrypoint.sh postgres \
     -c ssl=on \
     -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
     -c ssl_key_file=/var/lib/postgresql/data/server.key \
     -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-    -c hba_file=/etc/postgresql/pg_hba.conf \
-    "$@"
+    -c hba_file=/etc/postgresql/pg_hba.conf
