@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+echo "=== PostgreSQL entrypoint script started ==="
+echo "Arguments: $@"
+echo "First argument: $1"
+
+# Make sure the script is executable
+chmod +x /scripts/postgres-entrypoint.sh
+
 # Function to copy certificates with proper ownership
 copy_certificates() {
     echo "=== Copying certificates with proper ownership ==="

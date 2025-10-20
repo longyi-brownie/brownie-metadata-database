@@ -23,7 +23,7 @@ services:
       # PostgreSQL configuration
       - ./scripts/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
       # Custom entrypoint script
-      - ./scripts/postgres-entrypoint.sh:/scripts/postgres-entrypoint.sh:ro
+      - ./scripts/postgres-entrypoint.sh:/scripts/postgres-entrypoint.sh
     entrypoint: ["/scripts/postgres-entrypoint.sh"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brownie -d brownie_metadata || pg_isready -U brownie-fastapi-server -d brownie_metadata"]
