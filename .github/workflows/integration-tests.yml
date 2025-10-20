@@ -98,6 +98,7 @@ jobs:
       run: |
         chmod +x scripts/setup-dev-certs.sh
         ./scripts/setup-dev-certs.sh
+        ls -la dev-certs/
     
     - name: Run comprehensive Docker integration tests
       run: |
@@ -129,6 +130,7 @@ jobs:
       run: |
         chmod +x scripts/setup-dev-certs.sh
         ./scripts/setup-dev-certs.sh
+        ls -la dev-certs/
     
     - name: Build database migration image
       run: |
@@ -143,6 +145,7 @@ jobs:
         docker compose up -d
         sleep 30
         docker compose ps
+        docker compose logs postgres
         docker compose logs migrate
         docker compose down
     
