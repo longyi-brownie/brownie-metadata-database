@@ -74,14 +74,17 @@ def run_migrations_online() -> None:
     db_port = os.getenv("DB_PORT", "5432")
     db_name = os.getenv("DB_NAME", "brownie_metadata")
     db_user = os.getenv("DB_USER", "brownie")
-    db_password = os.getenv("DB_PASSWORD", "brownie")
+    db_password = os.getenv("DB_PASSWORD", "")
 
     print(
         f"DEBUG: Environment variables - DB_HOST: {db_host}, DB_PORT: {db_port}, DB_NAME: {db_name}, DB_USER: {db_user}"
     )
 
     # Construct the database URL
-    database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    if db_password:
+        database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    else:
+        database_url = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
     print(f"DEBUG: Using database URL: {database_url}")
     configuration["sqlalchemy.url"] = database_url
     print(f"DEBUG: Updated configuration: {configuration}")
