@@ -159,8 +159,32 @@ jobs:
           echo "Docker Compose config validation:"
           docker compose config
           
-          echo "=== Starting containers ==="
-          docker compose up -d
+          echo "=== Testing PostgreSQL only first ==="
+          docker compose up -d postgres || {
+            echo "=== PostgreSQL startup FAILED ==="
+            echo "=== Exit code: $? ==="
+            echo "=== Checking what containers exist ==="
+            docker ps -a
+            echo "=== Checking PostgreSQL logs ==="
+            docker compose logs postgres
+            exit 1
+          }
+          echo "=== PostgreSQL started successfully ==="
+          
+          echo "=== Starting all containers ==="
+          docker compose up -d || {
+            echo "=== Docker compose up FAILED ==="
+            echo "=== Exit code: $? ==="
+            echo "=== Checking what containers exist ==="
+            docker ps -a
+            echo "=== Checking docker compose logs ==="
+            docker compose logs
+            exit 1
+          }
+          echo "=== Docker compose up exit code: $? ==="
+          
+          echo "=== Immediate container status ==="
+          docker compose ps
           
           echo "=== Container status after 5s ==="
           sleep 5
