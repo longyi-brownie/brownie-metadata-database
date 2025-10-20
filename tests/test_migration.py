@@ -13,14 +13,16 @@ def _is_postgres_available():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
-        result = sock.connect_ex(('localhost', 5432))
+        result = sock.connect_ex(("localhost", 5432))
         sock.close()
         return result == 0
     except Exception:
         return False
 
 
-@pytest.mark.skipif(not _is_postgres_available(), reason="PostgreSQL not available on localhost:5432")
+@pytest.mark.skipif(
+    not _is_postgres_available(), reason="PostgreSQL not available on localhost:5432"
+)
 def test_database_migration_works():
     """Test that database migrations can be applied successfully."""
     # Use our existing database setup with proper SSL configuration

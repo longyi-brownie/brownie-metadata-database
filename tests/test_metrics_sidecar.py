@@ -68,17 +68,17 @@ class TestMetricsCollector:
         # Mock fetchall results - table sizes and connection stats
         def mock_fetchall():
             # First call is table sizes, second call is connection stats
-            if not hasattr(mock_fetchall, 'call_count'):
+            if not hasattr(mock_fetchall, "call_count"):
                 mock_fetchall.call_count = 0
             mock_fetchall.call_count += 1
-            
+
             if mock_fetchall.call_count == 1:
                 # Table sizes query returns (schema, table, size) tuples
                 return [("public", "organizations", 1024), ("public", "teams", 2048)]
             else:
                 # Connection stats query returns (state, count) tuples
                 return [("active", 5), ("idle", 2)]
-        
+
         mock_cursor.fetchall.side_effect = mock_fetchall
 
         collector = MetricsCollector()

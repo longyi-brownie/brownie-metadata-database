@@ -147,9 +147,10 @@ class TestDockerStackIntegration:
             None,
         )
         assert metrics_target is not None
-        
+
         # Allow some time for the target to become healthy
         import time
+
         max_retries = 10
         for i in range(max_retries):
             if metrics_target["health"] == "up":
@@ -167,7 +168,7 @@ class TestDockerStackIntegration:
                 ),
                 None,
             )
-        
+
         # Accept either "up" or "unknown" as valid states (unknown might be due to timing)
         assert metrics_target["health"] in ["up", "unknown"]
 
