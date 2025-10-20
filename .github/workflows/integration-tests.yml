@@ -184,13 +184,19 @@ jobs:
           echo "=== PostgreSQL started successfully ==="
           
           echo "=== Starting all containers ==="
-          docker compose up -d || {
+          docker compose up -d 2>&1 || {
             echo "=== Docker compose up FAILED ==="
             echo "=== Exit code: $? ==="
             echo "=== Checking what containers exist ==="
             docker ps -a
             echo "=== Checking docker compose logs ==="
             docker compose logs
+            echo "=== Checking individual container logs ==="
+            docker compose logs postgres
+            docker compose logs redis
+            docker compose logs backup
+            echo "=== Checking container status ==="
+            docker compose ps -a
             exit 1
           }
           echo "=== Docker compose up exit code: $? ==="

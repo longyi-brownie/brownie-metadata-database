@@ -21,7 +21,24 @@ class TestDockerStackIntegration:
             subprocess.run([str(cert_script)], check=True)
 
         # Start the stack
-        subprocess.run(["docker", "compose", "up", "-d"], check=True)
+        print("=== Starting Docker Compose stack ===")
+        result = subprocess.run(
+            ["docker", "compose", "up", "-d"], capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            print(
+                f"=== Docker compose up failed with exit code {result.returncode} ==="
+            )
+            print(f"STDOUT: {result.stdout}")
+            print(f"STDERR: {result.stderr}")
+            print("=== Container status ===")
+            subprocess.run(["docker", "ps", "-a"])
+            print("=== Docker compose logs ===")
+            subprocess.run(["docker", "compose", "logs"])
+            raise subprocess.CalledProcessError(
+                result.returncode, result.args, result.stdout, result.stderr
+            )
+        print("=== Docker Compose stack started successfully ===")
 
         # Wait for services to be ready
         time.sleep(30)
