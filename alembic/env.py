@@ -82,7 +82,9 @@ def run_migrations_online() -> None:
 
     # Construct the database URL
     if db_password:
-        database_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        database_url = (
+            f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        )
     else:
         database_url = f"postgresql://{db_user}@{db_host}:{db_port}/{db_name}"
     print(f"DEBUG: Using database URL: {database_url}")
