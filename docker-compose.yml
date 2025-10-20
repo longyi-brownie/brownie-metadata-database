@@ -147,7 +147,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=brownie_metadata
       - DB_USER=brownie-fastapi-server
-      - DB_PASSWORD=brownie
+      - DB_PASSWORD=
       - DB_SSL_MODE=require
       - CERT_DIR=/certs
       - BACKUP_PROVIDER=local
