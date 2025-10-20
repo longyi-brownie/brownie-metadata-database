@@ -65,11 +65,21 @@ class TestMetricsCollector:
             (2,),  # Agent configs count
         ]
 
-        # Mock table sizes query
-        mock_cursor.fetchall.return_value = [
-            ("public", "organizations", 1024),
-            ("public", "teams", 2048),
-        ]
+        # Mock fetchall results - table sizes and connection stats
+        def mock_fetchall():
+            # First call is table sizes, second call is connection stats
+            if not hasattr(mock_fetchall, 'call_count'):
+                mock_fetchall.call_count = 0
+            mock_fetchall.call_count += 1
+            
+            if mock_fetchall.call_count == 1:
+                # Table sizes query returns (schema, table, size) tuples
+                return [("public", "organizations", 1024), ("public", "teams", 2048)]
+            else:
+                # Connection stats query returns (state, count) tuples
+                return [("active", 5), ("idle", 2)]
+        
+        mock_cursor.fetchall.side_effect = mock_fetchall
 
         collector = MetricsCollector()
         collector.collect_database_metrics()
@@ -77,8 +87,8 @@ class TestMetricsCollector:
         # Verify database connection was attempted
         mock_connect.assert_called_once()
 
-        # Verify queries were executed
-        assert mock_cursor.execute.call_count >= 6  # Multiple queries executed
+        # Verify queries were executed (9 total: 1 size + 1 table sizes + 1 connections + 6 business metrics)
+        assert mock_cursor.execute.call_count >= 9  # Multiple queries executed
 
     @patch("metrics_sidecar.__main__.psycopg.connect")
     def test_collect_database_metrics_failure(self, mock_connect):

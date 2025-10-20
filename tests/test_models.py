@@ -149,14 +149,14 @@ class TestIncident:
             title="Test Incident",
             description="A test incident",
             status="open",
-            priority="MEDIUM",
+            priority="medium",
         )
         test_db.add(incident)
         test_db.commit()
 
         assert incident.title == "Test Incident"
         assert incident.status == "open"
-        assert incident.priority == "MEDIUM"
+        assert incident.priority == "medium"
         assert incident.org_id == sample_organization.id
         assert incident.team_id == sample_team.id
         assert incident.created_by == sample_user.id

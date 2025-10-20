@@ -58,7 +58,7 @@ class TestDatabaseSettings:
             password="test",
         )
 
-        expected_url = "postgresql://test:test@192.168.1.999:5432/test_db"
+        expected_url = "postgresql://test:test@localhost:5432/test_db"
         assert settings.database_url == expected_url
 
     def test_async_database_url(self):
@@ -71,7 +71,7 @@ class TestDatabaseSettings:
             password="test",
         )
 
-        expected_url = "postgresql+asyncpg://test:test@192.168.1.999:5432/test_db"
+        expected_url = "postgresql+asyncpg://test:test@localhost:5432/test_db"
         assert settings.async_database_url == expected_url
 
     def test_default_values(self):
