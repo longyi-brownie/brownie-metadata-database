@@ -1,8 +1,9 @@
 """Test metrics sidecar functionality."""
 
 import os
+from unittest.mock import MagicMock, Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 
 from metrics_sidecar.__main__ import MetricsCollector
 
