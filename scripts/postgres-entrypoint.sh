@@ -3,7 +3,8 @@ set -e
 
 echo "=== PostgreSQL entrypoint script started ==="
 echo "Arguments: $@"
-echo "First argument: $1"
+echo "First argument: '$1'"
+echo "Number of arguments: $#"
 
 # Make sure the script is executable
 chmod +x /scripts/postgres-entrypoint.sh
@@ -34,8 +35,8 @@ copy_certificates() {
     echo "=== Certificate copying completed ==="
 }
 
-# If this is the first argument and it's 'postgres', we're starting the server
-if [ "$1" = 'postgres' ]; then
+# If this is the first argument and it's 'postgres', or if no arguments are provided (default postgres command)
+if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
     echo "=== Starting PostgreSQL server with SSL ==="
     # Copy certificates before starting PostgreSQL
     copy_certificates
