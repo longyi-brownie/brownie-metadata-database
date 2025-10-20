@@ -175,8 +175,10 @@ jobs:
             echo "=== Exit code: $? ==="
             echo "=== Checking what containers exist ==="
             docker ps -a
-            echo "=== Checking PostgreSQL logs ==="
-            docker compose logs postgres
+          echo "=== Checking PostgreSQL logs ==="
+          docker compose logs postgres
+          echo "=== Checking PostgreSQL container details ==="
+          docker inspect brownie-metadata-postgres
             exit 1
           }
           echo "=== PostgreSQL started successfully ==="
