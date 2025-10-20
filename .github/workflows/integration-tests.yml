@@ -110,30 +110,56 @@ jobs:
           echo "=== PostgreSQL started successfully ==="
           
           echo "=== Checking PostgreSQL health ==="
-          docker compose exec -T postgres pg_isready -U brownie-fastapi-server -d brownie_metadata || echo "PostgreSQL health check failed"
+          # Wait a bit for PostgreSQL to fully start
+          sleep 5
+          docker compose exec -T postgres pg_isready -U brownie-fastapi-server -d brownie_metadata || {
+            echo "PostgreSQL health check failed, checking logs:"
+            docker compose logs postgres
+            echo "Trying alternative health check:"
+            docker compose exec -T postgres psql -U brownie-fastapi-server -d brownie_metadata -c "SELECT 1;" || echo "Alternative health check also failed"
+          }
           
           echo "=== Starting all containers ==="
-          docker compose up -d 2>&1 || {
-            echo "=== Docker compose up FAILED ==="
-            echo "=== Exit code: $? ==="
-            echo "=== Checking what containers exist ==="
-            docker ps -a
-            echo "=== Checking docker compose logs ==="
-            docker compose logs
-            echo "=== Checking individual container logs ==="
-            docker compose logs postgres
-            docker compose logs redis
-            docker compose logs backup
-            docker compose logs migrate
-            docker compose logs metrics-sidecar
-            docker compose logs prometheus
-            docker compose logs grafana
-            echo "=== Checking container status ==="
-            docker compose ps -a
-            echo "=== Checking which containers failed ==="
-            docker compose ps --filter "status=exited"
-            exit 1
-          }
+          echo "=== Checking Docker images ==="
+          docker images | grep brownie-metadata || echo "No brownie-metadata images found"
+          echo "=== Checking Docker Hub connectivity ==="
+          docker pull hello-world || echo "Docker Hub connectivity test failed"
+          
+          echo "=== Starting all containers with retry ==="
+          # Try starting all containers with retry logic
+          for i in {1..3}; do
+            echo "=== Attempt $i/3 ==="
+            if docker compose up -d 2>&1; then
+              echo "=== All containers started successfully ==="
+              break
+            else
+              echo "=== Attempt $i failed ==="
+              if [ $i -eq 3 ]; then
+                echo "=== All attempts failed ==="
+                echo "=== Docker compose up FAILED ==="
+                echo "=== Exit code: $? ==="
+                echo "=== Checking what containers exist ==="
+                docker ps -a
+                echo "=== Checking docker compose logs ==="
+                docker compose logs
+                echo "=== Checking individual container logs ==="
+                docker compose logs postgres
+                docker compose logs redis
+                docker compose logs backup
+                docker compose logs migrate
+                docker compose logs metrics-sidecar
+                docker compose logs prometheus
+                docker compose logs grafana
+                echo "=== Checking container status ==="
+                docker compose ps -a
+                echo "=== Checking which containers failed ==="
+                docker compose ps --filter "status=exited"
+                exit 1
+              fi
+              echo "=== Waiting 10 seconds before retry ==="
+              sleep 10
+            fi
+          done
           echo "=== Docker compose up exit code: $? ==="
           
           echo "=== Container status after 30s ==="
