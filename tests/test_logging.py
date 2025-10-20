@@ -153,7 +153,9 @@ class TestPerformanceLogger:
 
         mock_logger = mock_get_logger.return_value
 
-        logger.log_query("SELECT * FROM users", 2.0, rows_affected=10)  # > 1.0 threshold
+        logger.log_query(
+            "SELECT * FROM users", 2.0, rows_affected=10
+        )  # > 1.0 threshold
 
         mock_logger.warning.assert_called_once()
         call_args = mock_logger.warning.call_args

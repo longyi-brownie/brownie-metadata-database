@@ -13,7 +13,7 @@ class TestMetricsCollector:
     def test_metrics_collector_initialization(self):
         """Test creating a metrics collector."""
         collector = MetricsCollector()
-        
+
         assert collector.db_config is not None
         assert collector.redis_config is not None
         assert collector.metrics_port == 9091  # Default port
@@ -31,10 +31,10 @@ class TestMetricsCollector:
             "REDIS_PORT": "6380",
             "METRICS_PORT": "9092",
         }
-        
+
         with patch.dict(os.environ, env_vars):
             collector = MetricsCollector()
-            
+
             assert collector.db_config["host"] == "test-host"
             assert collector.db_config["port"] == 5433
             assert collector.db_config["dbname"] == "test_db"
@@ -52,7 +52,7 @@ class TestMetricsCollector:
         mock_cursor = MagicMock()
         mock_connect.return_value.__enter__.return_value = mock_conn
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
-        
+
         # Mock query results
         mock_cursor.fetchone.side_effect = [
             (1024 * 1024,),  # Database size
@@ -63,19 +63,19 @@ class TestMetricsCollector:
             (1,),  # Active incidents count
             (2,),  # Agent configs count
         ]
-        
+
         # Mock table sizes query
         mock_cursor.fetchall.return_value = [
             ("public", "organizations", 1024),
             ("public", "teams", 2048),
         ]
-        
+
         collector = MetricsCollector()
         collector.collect_database_metrics()
-        
+
         # Verify database connection was attempted
         mock_connect.assert_called_once()
-        
+
         # Verify queries were executed
         assert mock_cursor.execute.call_count >= 6  # Multiple queries executed
 
@@ -83,9 +83,9 @@ class TestMetricsCollector:
     def test_collect_database_metrics_failure(self, mock_connect):
         """Test database metrics collection failure handling."""
         mock_connect.side_effect = Exception("Connection failed")
-        
+
         collector = MetricsCollector()
-        
+
         # Should not raise exception
         collector.collect_database_metrics()
 
@@ -95,7 +95,7 @@ class TestMetricsCollector:
         # Mock Redis connection
         mock_redis = MagicMock()
         mock_redis_class.return_value = mock_redis
-        
+
         # Mock Redis info response
         mock_redis.info.return_value = {
             "connected_clients": 5,
@@ -103,10 +103,10 @@ class TestMetricsCollector:
             "keyspace_hits": 100,
             "keyspace_misses": 20,
         }
-        
+
         collector = MetricsCollector()
         collector.collect_redis_metrics()
-        
+
         # Verify Redis connection was attempted
         mock_redis_class.assert_called_once()
         mock_redis.info.assert_called_once()
@@ -115,9 +115,9 @@ class TestMetricsCollector:
     def test_collect_redis_metrics_failure(self, mock_redis_class):
         """Test Redis metrics collection failure handling."""
         mock_redis_class.side_effect = Exception("Redis connection failed")
-        
+
         collector = MetricsCollector()
-        
+
         # Should not raise exception
         collector.collect_redis_metrics()
 
@@ -127,12 +127,12 @@ class TestMetricsCollector:
         """Test the run method starts server and collects metrics."""
         # Mock sleep to prevent infinite loop
         mock_sleep.side_effect = KeyboardInterrupt()
-        
+
         collector = MetricsCollector()
-        
+
         # Should raise KeyboardInterrupt when sleep is interrupted
         with pytest.raises(KeyboardInterrupt):
             collector.run()
-        
+
         # Verify HTTP server was started
         mock_start_server.assert_called_once_with(9091)

@@ -9,15 +9,17 @@ def test_database_migration_works():
     """Test that database migrations can be applied successfully."""
     # Use our existing database setup with proper SSL configuration
     env = os.environ.copy()
-    env.update({
-        "DB_HOST": "localhost",
-        "DB_PORT": "5432", 
-        "DB_NAME": "brownie_metadata",
-        "DB_USER": "brownie-fastapi-server",
-        "DB_PASSWORD": "",  # No password needed with certificates
-        "DB_SSL_MODE": "require",
-        "CERT_DIR": "dev-certs",  # Use our dev certificates
-    })
+    env.update(
+        {
+            "DB_HOST": "localhost",
+            "DB_PORT": "5432",
+            "DB_NAME": "brownie_metadata",
+            "DB_USER": "brownie-fastapi-server",
+            "DB_PASSWORD": "",  # No password needed with certificates
+            "DB_SSL_MODE": "require",
+            "CERT_DIR": "dev-certs",  # Use our dev certificates
+        }
+    )
 
     # Run migration
     result = subprocess.run(

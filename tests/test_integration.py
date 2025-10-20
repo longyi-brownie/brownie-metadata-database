@@ -8,6 +8,7 @@ import pytest
 
 # Add src to path for imports
 import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from database.base import Base as DatabaseBase
@@ -55,15 +56,17 @@ def test_database_migration_works():
     """Test that database migrations can be applied successfully."""
     # Use our existing database setup with proper SSL configuration
     env = os.environ.copy()
-    env.update({
-        "DB_HOST": "localhost",
-        "DB_PORT": "5432", 
-        "DB_NAME": "brownie_metadata",
-        "DB_USER": "brownie-fastapi-server",
-        "DB_PASSWORD": "",  # No password needed with certificates
-        "DB_SSL_MODE": "require",
-        "CERT_DIR": "dev-certs",  # Use our dev certificates
-    })
+    env.update(
+        {
+            "DB_HOST": "localhost",
+            "DB_PORT": "5432",
+            "DB_NAME": "brownie_metadata",
+            "DB_USER": "brownie-fastapi-server",
+            "DB_PASSWORD": "",  # No password needed with certificates
+            "DB_SSL_MODE": "require",
+            "CERT_DIR": "dev-certs",  # Use our dev certificates
+        }
+    )
 
     # Run migration
     result = subprocess.run(
