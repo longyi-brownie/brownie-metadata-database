@@ -134,23 +134,70 @@ jobs:
     
     - name: Build database migration image
       run: |
-        docker build -t brownie-metadata-db:test .
+        echo "=== Building database migration image ==="
+        docker build -t brownie-metadata-db:test . --progress=plain
+        echo "=== Migration image built successfully ==="
     
     - name: Build metrics sidecar image
       run: |
-        docker build -f Dockerfile.metrics -t brownie-metadata-metrics:test .
+        echo "=== Building metrics sidecar image ==="
+        docker build -f Dockerfile.metrics -t brownie-metadata-metrics:test . --progress=plain
+        echo "=== Metrics image built successfully ==="
     
     - name: Test Docker Compose stack
       run: |
+          echo "=== Pre-startup debugging ==="
+          echo "Current directory: $(pwd)"
+          echo "Docker version:"
+          docker --version
+          echo "Docker Compose version:"
+          docker compose version
+          echo "Certificate files:"
+          ls -la dev-certs/
+          echo "Certificate file permissions:"
+          stat dev-certs/* || echo "No certificate files found"
+          echo "Docker Compose config validation:"
+          docker compose config
+          
           echo "=== Starting containers ==="
           docker compose up -d
-          sleep 30
-          echo "=== Container status ==="
+          
+          echo "=== Container status after 5s ==="
+          sleep 5
           docker compose ps
+          
+          echo "=== Container status after 15s ==="
+          sleep 10
+          docker compose ps
+          
+          echo "=== Container status after 30s ==="
+          sleep 15
+          docker compose ps
+          
           echo "=== PostgreSQL logs ==="
           docker compose logs postgres
+          
           echo "=== Migration logs ==="
           docker compose logs migrate
+          
+          echo "=== Metrics logs ==="
+          docker compose logs metrics-sidecar
+          
+          echo "=== Backup logs ==="
+          docker compose logs backup
+          
+          echo "=== All container logs ==="
+          docker compose logs
+          
+          echo "=== Container inspection ==="
+          docker inspect brownie-metadata-postgres || echo "PostgreSQL container not found"
+          
+          echo "=== File system check inside PostgreSQL container ==="
+          docker exec brownie-metadata-postgres ls -la /var/lib/postgresql/ || echo "Cannot exec into PostgreSQL container"
+          
+          echo "=== PostgreSQL connection test ==="
+          docker exec brownie-metadata-postgres pg_isready -U brownie-fastapi-server -d brownie_metadata || echo "Connection test failed"
+          
           docker compose down
     
     - name: Run comprehensive Docker integration tests
