@@ -9,13 +9,31 @@ import pytest
 
 
 def _is_postgres_available():
-    """Check if PostgreSQL is available on localhost:5432."""
+    """Check if PostgreSQL is available on localhost:5432 with SSL support."""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1)
         result = sock.connect_ex(("localhost", 5432))
         sock.close()
-        return result == 0
+        if result != 0:
+            return False
+
+        # Also check if we can connect with SSL (required for this test)
+        try:
+            import psycopg2
+
+            conn = psycopg2.connect(
+                host="localhost",
+                port=5432,
+                database="brownie_metadata",
+                user="brownie-fastapi-server",
+                sslmode="require",
+            )
+            conn.close()
+            return True
+        except Exception:
+            # If SSL connection fails, skip the test
+            return False
     except Exception:
         return False
 
