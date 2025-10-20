@@ -276,7 +276,7 @@ class TestDockerStackIntegration:
         )
 
         # Migration should have completed successfully (either Exited(0) or not found if it completed quickly)
-        assert "Exited (0)" in result.stdout or "migrate" not in result.stdout
+        assert "exited (0)" in result.stdout.lower() or "migrate" not in result.stdout
 
         # Check alembic version table
         result = subprocess.run(
@@ -316,7 +316,9 @@ class TestDockerStackIntegration:
 
         for line in service_lines:
             if "migrate" in line:
-                assert "Exited (0)" in line  # Migration should complete successfully
+                assert (
+                    "exited (0)" in line.lower()
+                )  # Migration should complete successfully
             else:
                 assert (
                     "up" in line.lower() or "running" in line.lower()
