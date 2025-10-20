@@ -54,9 +54,9 @@ if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
         echo "=== PostgreSQL initialization complete, copying certificates ==="
         copy_certificates
         
-        # Start PostgreSQL with SSL configuration
-        echo "=== Starting PostgreSQL with SSL configuration ==="
-        exec postgres \
+        # Start PostgreSQL with SSL configuration as postgres user
+        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
+        exec su-exec postgres postgres \
             -c ssl=on \
             -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
             -c ssl_key_file=/var/lib/postgresql/data/server.key \
@@ -67,9 +67,9 @@ if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
         # Database already exists, just copy certificates and start
         copy_certificates
         
-        # Start PostgreSQL with SSL configuration
-        echo "=== Starting PostgreSQL with SSL configuration ==="
-        exec postgres \
+        # Start PostgreSQL with SSL configuration as postgres user
+        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
+        exec su-exec postgres postgres \
             -c ssl=on \
             -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
             -c ssl_key_file=/var/lib/postgresql/data/server.key \
