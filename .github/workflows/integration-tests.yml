@@ -98,6 +98,11 @@ jobs:
       run: |
         chmod +x scripts/setup-dev-certs.sh
         ./scripts/setup-dev-certs.sh
+        echo "=== Fix certificate ownership for PostgreSQL ==="
+        # PostgreSQL needs the key files to be owned by postgres user (999) or root (0)
+        sudo chown -R 999:999 dev-certs/ || echo "Could not change ownership, trying alternative..."
+        # Alternative: make files readable by postgres user
+        chmod 644 dev-certs/*.crt dev-certs/*.key || echo "Could not change permissions"
         ls -la dev-certs/
     
     - name: Run comprehensive Docker integration tests
@@ -130,6 +135,11 @@ jobs:
       run: |
         chmod +x scripts/setup-dev-certs.sh
         ./scripts/setup-dev-certs.sh
+        echo "=== Fix certificate ownership for PostgreSQL ==="
+        # PostgreSQL needs the key files to be owned by postgres user (999) or root (0)
+        sudo chown -R 999:999 dev-certs/ || echo "Could not change ownership, trying alternative..."
+        # Alternative: make files readable by postgres user
+        chmod 644 dev-certs/*.crt dev-certs/*.key || echo "Could not change permissions"
         ls -la dev-certs/
     
     - name: Build database migration image
