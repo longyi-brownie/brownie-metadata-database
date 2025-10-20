@@ -109,6 +109,9 @@ jobs:
           }
           echo "=== PostgreSQL started successfully ==="
           
+          echo "=== Checking PostgreSQL health ==="
+          docker compose exec -T postgres pg_isready -U brownie-fastapi-server -d brownie_metadata || echo "PostgreSQL health check failed"
+          
           echo "=== Starting all containers ==="
           docker compose up -d 2>&1 || {
             echo "=== Docker compose up FAILED ==="
@@ -121,8 +124,14 @@ jobs:
             docker compose logs postgres
             docker compose logs redis
             docker compose logs backup
+            docker compose logs migrate
+            docker compose logs metrics-sidecar
+            docker compose logs prometheus
+            docker compose logs grafana
             echo "=== Checking container status ==="
             docker compose ps -a
+            echo "=== Checking which containers failed ==="
+            docker compose ps --filter "status=exited"
             exit 1
           }
           echo "=== Docker compose up exit code: $? ==="
