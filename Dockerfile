@@ -6,6 +6,7 @@ WORKDIR /app
 # Set environment variables to suppress interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS=yes
+ENV PIP_ROOT_USER_ACTION=ignore
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -18,10 +19,10 @@ RUN apt-get update && apt-get install -y \
 COPY pyproject.toml ./
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir -e . --root-user-action=ignore
 
 # Install psycopg2 for alembic compatibility
-RUN pip install --no-cache-dir psycopg2-binary
+RUN pip install --no-cache-dir psycopg2-binary --root-user-action=ignore
 
 # Copy application code
 COPY . .

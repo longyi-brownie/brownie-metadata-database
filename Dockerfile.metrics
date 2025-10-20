@@ -5,6 +5,7 @@ WORKDIR /app
 # Set environment variables to suppress interactive prompts
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS=yes
+ENV PIP_ROOT_USER_ACTION=ignore
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -13,7 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY metrics_sidecar/requirements-metrics.txt .
-RUN pip install --no-cache-dir -r requirements-metrics.txt
+RUN pip install --no-cache-dir -r requirements-metrics.txt --root-user-action=ignore
 
 # Copy source code and metrics sidecar
 COPY src/ ./src/
