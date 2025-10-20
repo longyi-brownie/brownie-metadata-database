@@ -23,7 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 import structlog
 
-from src.logging_config.config import LoggingConfig, configure_logging
+from src.logging.config import LoggingConfig, configure_logging
 
 # Configure centralized logging
 config = LoggingConfig()

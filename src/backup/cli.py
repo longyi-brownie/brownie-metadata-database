@@ -59,7 +59,7 @@ def main() -> int:
         return 1
 
     # Configure centralized logging
-    from ..logging_config.config import LoggingConfig, configure_logging
+    from ..logging.config import LoggingConfig, configure_logging
 
     logging_config = LoggingConfig()
     configure_logging(logging_config)
