@@ -73,7 +73,7 @@ def run_migrations_online() -> None:
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = os.getenv("DB_PORT", "5432")
     db_name = os.getenv("DB_NAME", "brownie_metadata")
-    db_user = os.getenv("DB_USER", "brownie")
+    db_user = os.getenv("DB_USER", "brownie-fastapi-server")
     db_password = os.getenv("DB_PASSWORD", "")
 
     print(
