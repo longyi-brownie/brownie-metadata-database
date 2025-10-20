@@ -1,8 +1,8 @@
 """Test that database migrations work correctly."""
 
 import os
-import subprocess
 import socket
+import subprocess
 from pathlib import Path
 
 import pytest
