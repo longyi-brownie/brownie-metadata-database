@@ -37,43 +37,8 @@ jobs:
     - name: Run mypy (type checking)
       run: mypy src/ --ignore-missing-imports
 
-  # Integration tests (runs on main/PRs)
-  integration-tests:
-    runs-on: ubuntu-latest
-    needs: lint-and-format
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest pytest-cov testcontainers
-    
-    - name: Run database schema tests
-      run: |
-        pytest tests/test_integration.py::TestDatabaseSchema -v --tb=short
-    
-    - name: Run all tests with coverage
-      run: |
-        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html --disable-warnings
-    
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-
-  # Comprehensive Docker stack integration test
-  docker-integration:
+  # Comprehensive integration tests (Docker + Unit + Integration)
+  full-integration:
     runs-on: ubuntu-latest
     needs: lint-and-format
     
@@ -92,7 +57,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install pytest requests
+        pip install pytest pytest-cov requests
     
     - name: Generate SSL certificates
       run: |
@@ -105,56 +70,17 @@ jobs:
         chmod 644 dev-certs/*.crt dev-certs/*.key || echo "Could not change permissions"
         ls -la dev-certs/
     
-    - name: Run comprehensive Docker integration tests
-      run: |
-        pytest tests/test_docker_integration.py::TestDockerStackIntegration -v --tb=short --disable-warnings
-
-  # Build and test Docker images
-  docker-build:
-    runs-on: ubuntu-latest
-    needs: lint-and-format
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-    
-    - name: Set up Python 3.12
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.12'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest requests
-    
-    - name: Generate SSL certificates
-      run: |
-        chmod +x scripts/setup-dev-certs.sh
-        ./scripts/setup-dev-certs.sh
-        echo "=== Fix certificate ownership for PostgreSQL ==="
-        # PostgreSQL needs the key files to be owned by postgres user (999) or root (0)
-        sudo chown -R 999:999 dev-certs/ || echo "Could not change ownership, trying alternative..."
-        # Alternative: make files readable by postgres user
-        chmod 644 dev-certs/*.crt dev-certs/*.key || echo "Could not change permissions"
-        ls -la dev-certs/
-    
-    - name: Build database migration image
+    - name: Build Docker images
       run: |
         echo "=== Building database migration image ==="
-        docker build -t brownie-metadata-db:test . --progress=plain
+        docker build -f Dockerfile -t brownie-metadata-migrate:test . --progress=plain
         echo "=== Migration image built successfully ==="
-    
-    - name: Build metrics sidecar image
-      run: |
+        
         echo "=== Building metrics sidecar image ==="
         docker build -f Dockerfile.metrics -t brownie-metadata-metrics:test . --progress=plain
         echo "=== Metrics image built successfully ==="
     
-    - name: Test Docker Compose stack
+    - name: Start Docker Compose stack
       run: |
           echo "=== Pre-startup debugging ==="
           echo "Current directory: $(pwd)"
@@ -175,10 +101,10 @@ jobs:
             echo "=== Exit code: $? ==="
             echo "=== Checking what containers exist ==="
             docker ps -a
-          echo "=== Checking PostgreSQL logs ==="
-          docker compose logs postgres
-          echo "=== Checking PostgreSQL container details ==="
-          docker inspect brownie-metadata-postgres
+            echo "=== Checking PostgreSQL logs ==="
+            docker compose logs postgres
+            echo "=== Checking PostgreSQL container details ==="
+            docker inspect brownie-metadata-postgres
             exit 1
           }
           echo "=== PostgreSQL started successfully ==="
@@ -201,47 +127,49 @@ jobs:
           }
           echo "=== Docker compose up exit code: $? ==="
           
-          echo "=== Immediate container status ==="
-          docker compose ps
-          
-          echo "=== Container status after 5s ==="
-          sleep 5
-          docker compose ps
-          
-          echo "=== Container status after 15s ==="
-          sleep 10
-          docker compose ps
-          
           echo "=== Container status after 30s ==="
-          sleep 15
+          sleep 30
           docker compose ps
           
-          echo "=== PostgreSQL logs ==="
-          docker compose logs postgres
-          
-          echo "=== Migration logs ==="
-          docker compose logs migrate
-          
-          echo "=== Metrics logs ==="
-          docker compose logs metrics-sidecar
-          
-          echo "=== Backup logs ==="
-          docker compose logs backup
-          
-          echo "=== All container logs ==="
+          echo "=== All services logs ==="
           docker compose logs
           
-          echo "=== Container inspection ==="
-          docker inspect brownie-metadata-postgres || echo "PostgreSQL container not found"
+          echo "=== Testing service endpoints ==="
+          echo "=== Testing PostgreSQL connection ==="
+          docker compose exec -T postgres psql -U brownie-fastapi-server -d brownie_metadata -c "SELECT version();" || echo "PostgreSQL connection test failed"
           
-          echo "=== File system check inside PostgreSQL container ==="
-          docker exec brownie-metadata-postgres ls -la /var/lib/postgresql/ || echo "Cannot exec into PostgreSQL container"
+          echo "=== Testing Redis connection ==="
+          docker compose exec -T redis redis-cli ping || echo "Redis connection test failed"
           
-          echo "=== PostgreSQL connection test ==="
-          docker exec brownie-metadata-postgres pg_isready -U brownie-fastapi-server -d brownie_metadata || echo "Connection test failed"
+          echo "=== Testing Prometheus endpoint ==="
+          curl -f http://localhost:9090/api/v1/targets || echo "Prometheus endpoint test failed"
           
-          docker compose down
+          echo "=== Testing Grafana endpoint ==="
+          curl -f http://localhost:3000/api/health || echo "Grafana endpoint test failed"
+          
+          echo "=== Testing metrics sidecar endpoint ==="
+          curl -f http://localhost:9091/metrics || echo "Metrics sidecar endpoint test failed"
+          
+          echo "=== Docker Compose stack started successfully ==="
     
-    - name: Run comprehensive Docker integration tests
+    - name: Run all tests with coverage
       run: |
+        echo "=== Running unit tests ==="
+        pytest tests/test_models.py tests/test_logging.py tests/test_connection.py tests/test_ssl_connection.py tests/test_metrics_sidecar.py tests/test_migration.py tests/test_migration_independent.py -v --tb=short --disable-warnings
+        
+        echo "=== Running integration tests ==="
+        pytest tests/test_integration.py -v --tb=short --disable-warnings
+        
+        echo "=== Running Docker integration tests ==="
         pytest tests/test_docker_integration.py::TestDockerStackIntegration -v --tb=short --disable-warnings
+        
+        echo "=== Running all tests with coverage ==="
+        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html --disable-warnings
+    
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration
+        name: codecov-integration
+        fail_ci_if_error: false
