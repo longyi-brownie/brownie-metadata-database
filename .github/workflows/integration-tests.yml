@@ -140,8 +140,8 @@ jobs:
       run: |
         docker build -f Dockerfile.metrics -t brownie-metadata-metrics:test .
     
-      - name: Test Docker Compose stack
-        run: |
+    - name: Test Docker Compose stack
+      run: |
           echo "=== Starting containers ==="
           docker compose up -d
           sleep 30
