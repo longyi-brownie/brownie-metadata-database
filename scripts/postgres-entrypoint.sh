@@ -38,17 +38,44 @@ copy_certificates() {
 # If this is the first argument and it's 'postgres', or if no arguments are provided (default postgres command)
 if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
     echo "=== Starting PostgreSQL server with SSL ==="
-    # Copy certificates before starting PostgreSQL
-    copy_certificates
     
-    # Start PostgreSQL with SSL configuration - use exec to replace the shell process
-    echo "=== Executing PostgreSQL with SSL configuration ==="
-    exec /usr/local/bin/docker-entrypoint.sh postgres \
-        -c ssl=on \
-        -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-        -c ssl_key_file=/var/lib/postgresql/data/server.key \
-        -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-        -c hba_file=/etc/postgresql/pg_hba.conf
+    # Check if database is already initialized
+    if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
+        echo "=== Database not initialized, letting PostgreSQL initialize first ==="
+        # Let PostgreSQL initialize the database first
+        /usr/local/bin/docker-entrypoint.sh postgres &
+        POSTGRES_PID=$!
+        
+        # Wait for PostgreSQL to initialize
+        echo "=== Waiting for PostgreSQL initialization to complete ==="
+        wait $POSTGRES_PID
+        
+        # Now copy certificates after initialization
+        echo "=== PostgreSQL initialization complete, copying certificates ==="
+        copy_certificates
+        
+        # Start PostgreSQL with SSL configuration
+        echo "=== Starting PostgreSQL with SSL configuration ==="
+        exec postgres \
+            -c ssl=on \
+            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
+            -c ssl_key_file=/var/lib/postgresql/data/server.key \
+            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+            -c hba_file=/etc/postgresql/pg_hba.conf
+    else
+        echo "=== Database already initialized, copying certificates and starting with SSL ==="
+        # Database already exists, just copy certificates and start
+        copy_certificates
+        
+        # Start PostgreSQL with SSL configuration
+        echo "=== Starting PostgreSQL with SSL configuration ==="
+        exec postgres \
+            -c ssl=on \
+            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
+            -c ssl_key_file=/var/lib/postgresql/data/server.key \
+            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+            -c hba_file=/etc/postgresql/pg_hba.conf
+    fi
 else
     echo "=== Passing through to original entrypoint: $@ ==="
     # For other commands (like initdb), just pass through to the original entrypoint
