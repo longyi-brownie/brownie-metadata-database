@@ -75,12 +75,13 @@ def run_migrations_online() -> None:
     db_name = os.getenv("DB_NAME", "brownie_metadata")
     db_user = os.getenv("DB_USER", "brownie-fastapi-server")
     db_password = os.getenv("DB_PASSWORD", "")
+    db_ssl_mode = os.getenv("DB_SSL_MODE", "prefer")
 
     print(
-        f"DEBUG: Environment variables - DB_HOST: {db_host}, DB_PORT: {db_port}, DB_NAME: {db_name}, DB_USER: {db_user}"
+        f"DEBUG: Environment variables - DB_HOST: {db_host}, DB_PORT: {db_port}, DB_NAME: {db_name}, DB_USER: {db_user}, DB_SSL_MODE: {db_ssl_mode}"
     )
 
-    # Construct the database URL
+    # Construct the database URL (SSL mode will be handled in connect_args)
     if db_password:
         database_url = (
             f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
