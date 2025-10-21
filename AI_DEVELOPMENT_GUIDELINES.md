@@ -1,0 +1,123 @@
+# AI Development Guidelines
+
+This document provides guidelines for AI assistants working on this codebase.
+
+## Code Formatting Requirements
+
+**CRITICAL: Always run Black and isort before committing any code changes.**
+
+### Required Commands Before Every Commit:
+
+```bash
+# Format Python code with Black
+black .
+
+# Sort imports with isort
+isort .
+
+# Verify formatting is correct
+black --check --diff .
+isort --check-only --diff .
+```
+
+### Why This Matters:
+
+- The GitHub Actions CI pipeline runs `black --check --diff .` and `isort --check-only --diff .`
+- If these checks fail, the entire CI pipeline fails
+- This prevents code from being merged with formatting issues
+
+## Development Workflow
+
+1. **Make code changes**
+2. **Run formatting tools:**
+   ```bash
+   black .
+   isort .
+   ```
+3. **Verify formatting:**
+   ```bash
+   black --check --diff .
+   isort --check-only --diff .
+   ```
+4. **Run tests locally:**
+   ```bash
+   python3 -m pytest tests/test_docker_integration.py::TestDockerStackIntegration::test_postgres_schema -v -s
+   ```
+5. **Commit and push:**
+   ```bash
+   git add .
+   git commit -m "Your commit message"
+   git push origin main
+   ```
+
+## Common Issues
+
+### Black Formatting Issues
+- Long lists get reformatted to multi-line format
+- String concatenation gets reformatted
+- Function parameters get reformatted for readability
+
+### Import Sorting Issues
+- isort automatically sorts imports alphabetically
+- Groups imports by type (standard library, third-party, local)
+
+## Testing
+
+### Docker Integration Tests
+- Tests require Docker and Docker Compose to be running
+- Tests take ~55 seconds to complete (builds images, starts services, runs tests, cleans up)
+- Always test locally before pushing to avoid CI failures
+
+### Running Specific Tests
+```bash
+# Run a specific test
+python3 -m pytest tests/test_docker_integration.py::TestDockerStackIntegration::test_postgres_schema -v -s
+
+# Run all Docker integration tests
+python3 -m pytest tests/test_docker_integration.py -v
+
+# Run with coverage
+python3 -m pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
+```
+
+## CI/CD Pipeline
+
+The GitHub Actions workflow runs:
+1. **Lint and Format** (fast checks)
+   - Black formatting check
+   - isort import sorting check
+   - flake8 linting
+   - mypy type checking
+
+2. **Full Integration** (comprehensive tests)
+   - Docker image building
+   - Docker Compose stack startup
+   - Unit tests
+   - Integration tests
+   - Docker integration tests
+   - Coverage reporting
+
+## Important Notes
+
+- **Always run Black and isort before committing**
+- **Test locally before pushing to avoid CI failures**
+- **The CI environment may behave differently than local development**
+- **Debug statements are helpful for diagnosing CI issues**
+
+## File Structure
+
+- `tests/test_docker_integration.py` - Docker integration tests
+- `docker-compose.yml` - Docker services configuration
+- `scripts/postgres-entrypoint.sh` - PostgreSQL startup script
+- `src/` - Source code
+- `.github/workflows/integration-tests.yml` - CI/CD pipeline
+
+## Debugging CI Issues
+
+When tests pass locally but fail in CI:
+1. Add debug print statements to understand what's happening
+2. Check container status and logs
+3. Verify environment differences
+4. Test with similar conditions as CI (clean environment)
+
+Remember: **Format first, test second, commit third!**

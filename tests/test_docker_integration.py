@@ -42,7 +42,7 @@ class TestDockerStackIntegration:
 
         # Wait for services to be ready
         time.sleep(30)
-        
+
         # Debug: Check container status after startup
         print("=== DEBUG: Container status after 30s wait ===")
         status_result = subprocess.run(
@@ -52,7 +52,7 @@ class TestDockerStackIntegration:
             check=True,
         )
         print(f"Container status: {status_result.stdout}")
-        
+
         # Debug: Check migration service specifically
         print("=== DEBUG: Migration service status ===")
         migrate_status = subprocess.run(
@@ -62,7 +62,7 @@ class TestDockerStackIntegration:
             check=True,
         )
         print(f"Migration status: {migrate_status.stdout}")
-        
+
         # Debug: Check if tables exist
         print("=== DEBUG: Checking if tables exist ===")
         table_check = subprocess.run(
@@ -128,7 +128,7 @@ class TestDockerStackIntegration:
             check=True,
         )
         print(f"Migration service status: {migration_result.stdout}")
-        
+
         # Debug: Check migration logs
         print("=== DEBUG: Checking migration logs ===")
         migration_logs = subprocess.run(
@@ -138,7 +138,7 @@ class TestDockerStackIntegration:
             check=True,
         )
         print(f"Migration logs: {migration_logs.stdout}")
-        
+
         # Debug: Check if database exists and has content
         print("=== DEBUG: Checking database content ===")
         db_check = subprocess.run(
@@ -161,7 +161,7 @@ class TestDockerStackIntegration:
         )
         print(f"Database connection test: {db_check.stdout}")
         print(f"Database connection stderr: {db_check.stderr}")
-        
+
         # Check that all tables exist
         result = subprocess.run(
             [
