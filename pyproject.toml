@@ -10,7 +10,6 @@ name = "brownie-metadata-db"
 version = "0.1.0"
 description = "Brownie metadata database service"
 # readme = "README.md"
-# AI Development Guidelines: See AI_DEVELOPMENT_GUIDELINES.md for critical formatting requirements
 requires-python = ">=3.9"
 dependencies = [
     "sqlalchemy>=2.0.23",
