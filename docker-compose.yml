@@ -40,7 +40,7 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: brownie_metadata
-      DB_USER: "postgres"
+      DB_USER: "brownie-fastapi-server"
       DB_SSL_MODE: disable
       CERT_DIR: /certs
     volumes:
