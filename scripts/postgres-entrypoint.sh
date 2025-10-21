@@ -50,49 +50,53 @@ setup_internal_certs() {
     echo "=== Internal certificate setup completed ==="
 }
 
+# Determine data directory (matches postgres image default)
+PGDATA_DIR="${PGDATA:-/var/lib/postgresql/data}"
+
 # If this is the first argument and it's 'postgres', or if no arguments are provided (default postgres command)
 if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
     echo "=== Starting PostgreSQL server with SSL ==="
-    
-    # Check if database is already initialized
-    if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
-        echo "=== Database not initialized, letting PostgreSQL initialize first ==="
-        # Let PostgreSQL initialize the database first
+
+    # On the very first launch the data directory is empty. We need to let the
+    # official entrypoint perform the initialization so that PG_VERSION exists
+    # and all bootstrap SQL scripts have run before we copy certificates or the
+    # pg_hba.conf file into place.
+    if [ ! -f "$PGDATA_DIR/PG_VERSION" ]; then
+        echo "=== Database not initialized, running original entrypoint for bootstrap ==="
+
+        # Launch the original entrypoint in the background so it can run initdb
+        # and execute files in /docker-entrypoint-initdb.d. Once the server is
+        # ready we stop it and continue with our custom SSL configuration.
         /usr/local/bin/docker-entrypoint.sh postgres &
         POSTGRES_PID=$!
-        
-        # Wait for PostgreSQL to initialize
-        echo "=== Waiting for PostgreSQL initialization to complete ==="
+
+        echo "=== Waiting for PostgreSQL bootstrap to finish ==="
+        # Wait until the temporary server is accepting connections which means
+        # initialization finished and init scripts ran.
+        until pg_isready -q -h localhost -p 5432 -U postgres; do
+            sleep 1
+        done
+
+        echo "=== Stopping temporary PostgreSQL server ==="
+        su-exec postgres pg_ctl -D "$PGDATA_DIR" -m fast -w stop
+
+        # Ensure the background process exits before we continue
         wait $POSTGRES_PID
-        
-        # Now copy certificates after initialization
-        echo "=== PostgreSQL initialization complete, copying certificates ==="
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
-    else
-        echo "=== Database already initialized, copying certificates and starting with SSL ==="
-        # Database already exists, just copy certificates and start
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
+        echo "=== PostgreSQL bootstrap complete ==="
     fi
+
+    # At this point the data directory exists. Copy certs/pg_hba configuration
+    copy_certificates
+    setup_internal_certs
+
+    # Start PostgreSQL with SSL configuration as postgres user
+    echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
+    exec su-exec postgres postgres \
+        -c ssl=on \
+        -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
+        -c ssl_key_file=/var/lib/postgresql/data/server.key \
+        -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+        -c hba_file=/var/lib/postgresql/data/pg_hba.conf
 else
     echo "=== Passing through to original entrypoint: $@ ==="
     # For other commands (like initdb), just pass through to the original entrypoint
