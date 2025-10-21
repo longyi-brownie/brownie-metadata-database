@@ -42,6 +42,49 @@ class TestDockerStackIntegration:
 
         # Wait for services to be ready
         time.sleep(30)
+        
+        # Debug: Check container status after startup
+        print("=== DEBUG: Container status after 30s wait ===")
+        status_result = subprocess.run(
+            ["docker", "compose", "ps", "-a"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(f"Container status: {status_result.stdout}")
+        
+        # Debug: Check migration service specifically
+        print("=== DEBUG: Migration service status ===")
+        migrate_status = subprocess.run(
+            ["docker", "compose", "ps", "-a", "migrate"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(f"Migration status: {migrate_status.stdout}")
+        
+        # Debug: Check if tables exist
+        print("=== DEBUG: Checking if tables exist ===")
+        table_check = subprocess.run(
+            [
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "brownie-fastapi-server",
+                "-d",
+                "brownie_metadata",
+                "-c",
+                "\\dt",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        print(f"Table check result: {table_check.stdout}")
+        print(f"Table check stderr: {table_check.stderr}")
 
         yield
 
@@ -76,6 +119,49 @@ class TestDockerStackIntegration:
 
     def test_postgres_schema(self, docker_stack):
         """Test that database schema is properly created."""
+        # Debug: Check migration service status first
+        print("=== DEBUG: Checking migration service status ===")
+        migration_result = subprocess.run(
+            ["docker", "compose", "ps", "-a", "migrate"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(f"Migration service status: {migration_result.stdout}")
+        
+        # Debug: Check migration logs
+        print("=== DEBUG: Checking migration logs ===")
+        migration_logs = subprocess.run(
+            ["docker", "compose", "logs", "migrate"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print(f"Migration logs: {migration_logs.stdout}")
+        
+        # Debug: Check if database exists and has content
+        print("=== DEBUG: Checking database content ===")
+        db_check = subprocess.run(
+            [
+                "docker",
+                "compose",
+                "exec",
+                "-T",
+                "postgres",
+                "psql",
+                "-U",
+                "brownie-fastapi-server",
+                "-d",
+                "brownie_metadata",
+                "-c",
+                "SELECT current_database(), current_user;",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        print(f"Database connection test: {db_check.stdout}")
+        print(f"Database connection stderr: {db_check.stderr}")
+        
         # Check that all tables exist
         result = subprocess.run(
             [
@@ -96,6 +182,11 @@ class TestDockerStackIntegration:
             text=True,
             check=True,
         )
+
+        print(f"=== DEBUG: \\dt command result ===")
+        print(f"Return code: {result.returncode}")
+        print(f"STDOUT: {result.stdout}")
+        print(f"STDERR: {result.stderr}")
 
         expected_tables = [
             "organizations",
