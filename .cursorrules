@@ -1,0 +1,36 @@
+# Cursor AI Rules for Brownie Metadata Database
+
+## Critical Requirements
+
+**ALWAYS read AI_DEVELOPMENT_GUIDELINES.md before making any code changes!**
+
+This file contains:
+- Required Black and isort formatting before every commit
+- Development workflow steps
+- Testing requirements
+- CI/CD pipeline details
+
+## Quick Reference
+
+Before making any changes:
+1. Read AI_DEVELOPMENT_GUIDELINES.md
+2. Run `black .` and `isort .`
+3. Test locally before committing
+4. Follow the exact workflow in the guidelines
+
+## Key Files
+- AI_DEVELOPMENT_GUIDELINES.md - Critical development rules
+- tests/test_docker_integration.py - Docker integration tests
+- docker-compose.yml - Service configuration
+- scripts/postgres-entrypoint.sh - PostgreSQL setup
+
+## Formatting
+- Black: `black .`
+- isort: `isort .`
+- Verify: `black --check --diff .` and `isort --check-only --diff .`
+
+## Testing
+- Docker tests: `python3 -m pytest tests/test_docker_integration.py -v`
+- Specific test: `python3 -m pytest tests/test_docker_integration.py::TestDockerStackIntegration::test_postgres_schema -v -s`
+
+Remember: Format first, test second, commit third!
