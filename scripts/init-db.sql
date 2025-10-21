@@ -27,6 +27,9 @@ BEGIN
 END
 $$;
 
+-- Ensure the application user always has a password for internal services
+ALTER ROLE "brownie-fastapi-server" WITH PASSWORD 'brownie';
+
 -- Grant necessary permissions
 GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
 GRANT USAGE, CREATE ON SCHEMA public TO "brownie-fastapi-server";

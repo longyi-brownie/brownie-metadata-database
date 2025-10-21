@@ -80,6 +80,11 @@ class MetricsCollector:
             "sslrootcert": f"{os.getenv('CERT_DIR', '/certs')}/ca.crt",
         }
 
+        db_password_env = os.getenv("DB_PASSWORD")
+        db_password = "brownie" if db_password_env is None else db_password_env
+        if db_password:
+            self.db_config["password"] = db_password
+
         self.redis_config = {
             "host": os.getenv("REDIS_HOST", "redis"),
             "port": int(os.getenv("REDIS_PORT", 6379)),

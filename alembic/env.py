@@ -74,7 +74,8 @@ def run_migrations_online() -> None:
     db_port = os.getenv("DB_PORT", "5432")
     db_name = os.getenv("DB_NAME", "brownie_metadata")
     db_user = os.getenv("DB_USER", "brownie-fastapi-server")
-    db_password = os.getenv("DB_PASSWORD", "")
+    db_password_env = os.getenv("DB_PASSWORD")
+    db_password = "brownie" if db_password_env is None else db_password_env
     db_ssl_mode = os.getenv("DB_SSL_MODE", "prefer")
 
     print(

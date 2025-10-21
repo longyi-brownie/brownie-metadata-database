@@ -41,6 +41,7 @@ services:
       DB_PORT: 5432
       DB_NAME: brownie_metadata
       DB_USER: "brownie-fastapi-server"
+      DB_PASSWORD: "brownie"
       DB_SSL_MODE: disable
       CERT_DIR: /certs
     volumes:
@@ -75,6 +76,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=brownie_metadata
       - DB_USER=brownie-fastapi-server
+      - DB_PASSWORD=brownie
       - DB_SSL_MODE=disable
       - CERT_DIR=/certs
       - REDIS_HOST=redis
@@ -137,13 +139,13 @@ services:
     build: .
     container_name: brownie-metadata-backup
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=brownie_metadata
-      - DB_USER=brownie-fastapi-server
-      - DB_PASSWORD=
-      - DB_SSL_MODE=disable
-      - CERT_DIR=/certs
+      - BACKUP_DB_HOST=postgres
+      - BACKUP_DB_PORT=5432
+      - BACKUP_DB_NAME=brownie_metadata
+      - BACKUP_DB_USER=brownie-fastapi-server
+      - BACKUP_DB_PASSWORD=brownie
+      - BACKUP_DB_SSL_MODE=disable
+      - BACKUP_CERT_DIR=/certs
       - BACKUP_PROVIDER=local
       - BACKUP_DESTINATION=/backups
       - BACKUP_SCHEDULE=0 2 * * *
