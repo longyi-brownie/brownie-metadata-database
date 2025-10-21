@@ -118,8 +118,9 @@ def run_migrations_online() -> None:
         if os.path.exists(ca_cert):
             connect_args["sslrootcert"] = ca_cert
     elif ssl_mode == "disable":
-        # For disable mode, don't add any SSL parameters
-        print("DEBUG: SSL disabled - no SSL parameters added")
+        # For disable mode, explicitly disable SSL
+        connect_args["sslmode"] = "disable"
+        print("DEBUG: SSL explicitly disabled")
     else:
         print(f"DEBUG: Unknown SSL mode: {ssl_mode}")
 
