@@ -56,43 +56,58 @@ if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
     
     # Check if database is already initialized
     if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
-        echo "=== Database not initialized, letting PostgreSQL initialize first ==="
-        # Let PostgreSQL initialize the database first
+        echo "=== Database not initialized, running default initialization ==="
+
+        # Run the official entrypoint to perform initialization
         /usr/local/bin/docker-entrypoint.sh postgres &
         POSTGRES_PID=$!
-        
-        # Wait for PostgreSQL to initialize
+
         echo "=== Waiting for PostgreSQL initialization to complete ==="
-        wait $POSTGRES_PID
-        
-        # Now copy certificates after initialization
-        echo "=== PostgreSQL initialization complete, copying certificates ==="
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
+        # Wait for the initialization process to either finish or
+        # promote the temporary server to a ready state
+        while true; do
+            if ! kill -0 $POSTGRES_PID 2>/dev/null; then
+                break
+            fi
+
+            if su-exec postgres pg_isready -h localhost >/dev/null 2>&1; then
+                break
+            fi
+
+            sleep 1
+        done
+
+        INIT_EXIT_CODE=0
+        if kill -0 $POSTGRES_PID 2>/dev/null; then
+            echo "=== Stopping temporary PostgreSQL instance after initialization ==="
+            su-exec postgres pg_ctl -D /var/lib/postgresql/data -m fast stop >/dev/null 2>&1 || true
+            wait $POSTGRES_PID || INIT_EXIT_CODE=$?
+        else
+            wait $POSTGRES_PID || INIT_EXIT_CODE=$?
+        fi
+
+        if [ $INIT_EXIT_CODE -ne 0 ]; then
+            echo "ERROR: PostgreSQL initialization failed with exit code $INIT_EXIT_CODE" >&2
+            exit $INIT_EXIT_CODE
+        fi
+
+        echo "=== PostgreSQL initialization complete, applying custom configuration ==="
     else
-        echo "=== Database already initialized, copying certificates and starting with SSL ==="
-        # Database already exists, just copy certificates and start
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
+        echo "=== Database already initialized, applying custom configuration ==="
     fi
+
+    # Copy certificates and authentication configuration
+    copy_certificates
+    setup_internal_certs
+
+    # Start PostgreSQL with SSL configuration as postgres user
+    echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
+    exec su-exec postgres postgres \
+        -c ssl=on \
+        -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
+        -c ssl_key_file=/var/lib/postgresql/data/server.key \
+        -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+        -c hba_file=/var/lib/postgresql/data/pg_hba.conf
 else
     echo "=== Passing through to original entrypoint: $@ ==="
     # For other commands (like initdb), just pass through to the original entrypoint
