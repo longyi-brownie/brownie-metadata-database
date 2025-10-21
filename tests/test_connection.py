@@ -81,7 +81,7 @@ class TestDatabaseSettings:
         assert settings.host == "localhost"
         assert settings.port == 5432
         assert settings.name == "brownie_metadata"
-        assert settings.user == "brownie"
-        assert settings.password == "brownie"
+        assert settings.user == "brownie-fastapi-server"
+        assert settings.password == ""
         assert settings.pool_size == 10
         assert settings.max_overflow == 20
