@@ -180,7 +180,7 @@ jobs:
           curl -f http://localhost:9090/api/v1/targets || echo "Prometheus endpoint test failed"
           
           echo "=== Testing Grafana endpoint ==="
-          curl -f http://localhost:3000/api/health || echo "Grafana endpoint test failed"
+          curl -f http://localhost:3001/api/health || echo "Grafana endpoint test failed"
           
           echo "=== Testing metrics sidecar endpoint ==="
           curl -f http://localhost:9091/metrics || echo "Metrics sidecar endpoint test failed"
