@@ -295,13 +295,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in [
-            "require",
-            "verify-ca",
-            "verify-full",
-            "prefer",
-            "disable",
-        ]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available
@@ -316,6 +310,9 @@ class BackupManager:
 
             if ca_cert.exists():
                 env["PGSSLROOTCERT"] = str(ca_cert)
+        elif self.config.db_ssl_mode == "disable":
+            # For disable mode, explicitly set SSL mode to disable
+            env["PGSSLMODE"] = "disable"
 
         return cmd
 
@@ -342,13 +339,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in [
-            "require",
-            "verify-ca",
-            "verify-full",
-            "prefer",
-            "disable",
-        ]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available
@@ -363,6 +354,9 @@ class BackupManager:
 
             if ca_cert.exists():
                 env["PGSSLROOTCERT"] = str(ca_cert)
+        elif self.config.db_ssl_mode == "disable":
+            # For disable mode, explicitly set SSL mode to disable
+            env["PGSSLMODE"] = "disable"
 
         return cmd
 
@@ -372,13 +366,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in [
-            "require",
-            "verify-ca",
-            "verify-full",
-            "prefer",
-            "disable",
-        ]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available
@@ -393,6 +381,9 @@ class BackupManager:
 
             if ca_cert.exists():
                 env["PGSSLROOTCERT"] = str(ca_cert)
+        elif self.config.db_ssl_mode == "disable":
+            # For disable mode, explicitly set SSL mode to disable
+            env["PGSSLMODE"] = "disable"
 
         return env
 

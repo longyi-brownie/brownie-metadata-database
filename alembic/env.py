@@ -97,7 +97,7 @@ def run_migrations_online() -> None:
     ssl_mode = os.getenv("DB_SSL_MODE", "require")
     print(f"DEBUG: SSL mode: {ssl_mode}")
 
-    if ssl_mode in ["require", "verify-ca", "verify-full", "prefer", "disable"]:
+    if ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
         connect_args["sslmode"] = ssl_mode
 
         # Add certificate paths if available
@@ -117,6 +117,11 @@ def run_migrations_online() -> None:
 
         if os.path.exists(ca_cert):
             connect_args["sslrootcert"] = ca_cert
+    elif ssl_mode == "disable":
+        # For disable mode, don't add any SSL parameters
+        print("DEBUG: SSL disabled - no SSL parameters added")
+    else:
+        print(f"DEBUG: Unknown SSL mode: {ssl_mode}")
 
     print(f"DEBUG: Connect args: {connect_args}")
 
