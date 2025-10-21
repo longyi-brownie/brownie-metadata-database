@@ -1,14 +1,15 @@
 """Backup configuration and settings."""
 
-import os
 from typing import Optional
 
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import AliasChoices, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BackupConfig(BaseSettings):
     """Backup configuration settings."""
+
+    model_config = SettingsConfigDict(env_prefix="", extra="ignore")
 
     # Provider settings
     provider: str = Field(
@@ -46,16 +47,41 @@ class BackupConfig(BaseSettings):
     region: Optional[str] = Field(default=None, description="Cloud provider region")
 
     # Database settings
-    db_host: str = Field(default="postgres", description="Database host")
-    db_port: int = Field(default=5432, description="Database port")
-    db_name: str = Field(default="brownie_metadata", description="Database name")
-    db_user: str = Field(default="brownie-fastapi-server", description="Database user")
-    db_password: str = Field(default="brownie", description="Database password")
-    db_ssl_mode: str = Field(default="require", description="Database SSL mode")
-    cert_dir: str = Field(default="/certs", description="Certificate directory")
-
-    class Config:
-        env_prefix = "BACKUP_"
+    db_host: str = Field(
+        default="postgres",
+        description="Database host",
+        validation_alias=AliasChoices("DB_HOST", "BACKUP_DB_HOST"),
+    )
+    db_port: int = Field(
+        default=5432,
+        description="Database port",
+        validation_alias=AliasChoices("DB_PORT", "BACKUP_DB_PORT"),
+    )
+    db_name: str = Field(
+        default="brownie_metadata",
+        description="Database name",
+        validation_alias=AliasChoices("DB_NAME", "BACKUP_DB_NAME"),
+    )
+    db_user: str = Field(
+        default="brownie-fastapi-server",
+        description="Database user",
+        validation_alias=AliasChoices("DB_USER", "BACKUP_DB_USER"),
+    )
+    db_password: str = Field(
+        default="brownie",
+        description="Database password",
+        validation_alias=AliasChoices("DB_PASSWORD", "BACKUP_DB_PASSWORD"),
+    )
+    db_ssl_mode: str = Field(
+        default="require",
+        description="Database SSL mode",
+        validation_alias=AliasChoices("DB_SSL_MODE", "BACKUP_DB_SSL_MODE"),
+    )
+    cert_dir: str = Field(
+        default="/certs",
+        description="Certificate directory",
+        validation_alias=AliasChoices("CERT_DIR", "BACKUP_CERT_DIR"),
+    )
 
     @property
     def database_url(self) -> str:

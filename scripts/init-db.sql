@@ -27,6 +27,9 @@ BEGIN
 END
 $$;
 
+-- Ensure the application user has a password for non-SSL connections
+ALTER ROLE "brownie-fastapi-server" WITH PASSWORD 'brownie';
+
 -- Grant necessary permissions
 GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
 GRANT USAGE, CREATE ON SCHEMA public TO "brownie-fastapi-server";
