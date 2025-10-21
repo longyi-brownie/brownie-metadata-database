@@ -74,6 +74,7 @@ class MetricsCollector:
             "port": int(os.getenv("DB_PORT", 5432)),
             "dbname": os.getenv("DB_NAME", "brownie_metadata"),
             "user": os.getenv("DB_USER", "brownie-fastapi-server"),
+            "password": os.getenv("DB_PASSWORD"),
             "sslmode": os.getenv("DB_SSL_MODE", "require"),
             "sslcert": f"{os.getenv('CERT_DIR', '/certs')}/client.crt",
             "sslkey": f"{os.getenv('CERT_DIR', '/certs')}/client.key",

@@ -22,7 +22,9 @@ $$ language 'plpgsql';
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brownie-fastapi-server') THEN
-        CREATE ROLE "brownie-fastapi-server" WITH LOGIN;
+        CREATE ROLE "brownie-fastapi-server" WITH LOGIN PASSWORD 'brownie';
+    ELSE
+        ALTER ROLE "brownie-fastapi-server" WITH LOGIN PASSWORD 'brownie';
     END IF;
 END
 $$;

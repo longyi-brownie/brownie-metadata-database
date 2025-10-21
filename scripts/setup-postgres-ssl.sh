@@ -42,7 +42,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" << '
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brownie-fastapi-server') THEN
-        CREATE USER "brownie-fastapi-server";
+        CREATE USER "brownie-fastapi-server" WITH PASSWORD 'brownie';
+    ELSE
+        ALTER USER "brownie-fastapi-server" WITH PASSWORD 'brownie';
     END IF;
 END
 $$;

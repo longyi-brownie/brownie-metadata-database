@@ -148,7 +148,7 @@ brownie-metadata-database/
 - ✅ **Ready-to-Use Dashboards** - Copy-paste Grafana dashboards for enterprise customers
 - ✅ **Alerting Rules** - Pre-configured alerts for database health and business metrics
 - ✅ **SSL/TLS Configuration** - PostgreSQL starts with SSL enabled
-- ✅ **Certificate Authentication** - Only clients with valid certificates can connect
+- ✅ **Certificate Authentication** - Production requires client certificates; local development also exposes a fallback `brownie` password for automation
 - ✅ **User Creation** - `brownie-fastapi-server` user created automatically
 - ✅ **Database Migrations** - Schema applied automatically
 
@@ -179,6 +179,9 @@ GRANT CONNECT ON DATABASE brownie_metadata TO "brownie-fastapi-server";
 GRANT USAGE ON SCHEMA public TO "brownie-fastapi-server";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO "brownie-fastapi-server";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO "brownie-fastapi-server";
+
+-- Optional: set password used by local development automation
+ALTER USER "brownie-fastapi-server" WITH PASSWORD 'brownie';
 ```
 
 **What's Automated:**
@@ -450,7 +453,8 @@ open http://localhost:8000/redoc
 ### Database Authentication
 
 **Client Certificate Authentication:**
-- **No passwords** - Uses client certificates for authentication
+- **Certificates first** - Uses client certificates for authentication in production
+- **Fallback password** - Local development and tests use the `brownie` password for automation
 - **Certificate CN**: `brownie-fastapi-server` (matches certificate Common Name)
 - **mTLS Support**: Mutual TLS verification in production
 - **Encrypted Connections**: All database traffic encrypted in transit
@@ -471,7 +475,7 @@ open http://localhost:8000/redoc
 **Database Access:**
 - **SQLAlchemy ORM**: Type-safe database queries
 - **Connection Pooling**: Efficient database connections
-- **Certificate-based**: All database access uses client certificates
+- **Certificate-based**: All database access uses client certificates, with a development fallback password when certificates aren't available
 
 ### Enterprise Features
 
