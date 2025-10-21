@@ -295,7 +295,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer", "disable"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available
@@ -336,7 +336,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer", "disable"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available
@@ -360,7 +360,7 @@ class BackupManager:
         env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
-        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full"]:
+        if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer", "disable"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths if available

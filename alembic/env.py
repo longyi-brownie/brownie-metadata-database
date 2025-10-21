@@ -97,7 +97,7 @@ def run_migrations_online() -> None:
     ssl_mode = os.getenv("DB_SSL_MODE", "require")
     print(f"DEBUG: SSL mode: {ssl_mode}")
 
-    if ssl_mode in ["require", "verify-ca", "verify-full"]:
+    if ssl_mode in ["require", "verify-ca", "verify-full", "prefer", "disable"]:
         connect_args["sslmode"] = ssl_mode
 
         # Add certificate paths if available

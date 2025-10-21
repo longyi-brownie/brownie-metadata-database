@@ -192,11 +192,11 @@ class TestDockerStackIntegration:
     def test_grafana_dashboards(self, docker_stack):
         """Test Grafana is running and dashboards are loaded."""
         # Test Grafana health
-        response = requests.get("http://localhost:3000/api/health", timeout=10)
+        response = requests.get("http://localhost:3001/api/health", timeout=10)
         assert response.status_code == 200
 
         # Test that Grafana is accessible (may require auth, so just check it's running)
-        response = requests.get("http://localhost:3000/login", timeout=10)
+        response = requests.get("http://localhost:3001/login", timeout=10)
         # Grafana may return 200 or 401 depending on auth setup, both are valid
         assert response.status_code in [200, 401]
         if response.status_code == 200:

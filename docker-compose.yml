@@ -41,14 +41,14 @@ services:
       DB_PORT: 5432
       DB_NAME: brownie_metadata
       DB_USER: "brownie-fastapi-server"
-      DB_SSL_MODE: require
+      DB_SSL_MODE: disable
       CERT_DIR: /certs
     volumes:
       - ./dev-certs:/certs:ro
     depends_on:
       postgres:
         condition: service_healthy
-    command: ["alembic", "upgrade", "head"]
+    command: ["sh", "-c", "sleep 10 && alembic upgrade head"]
 
   # Redis for caching
   redis:
@@ -75,7 +75,7 @@ services:
       - DB_PORT=5432
       - DB_NAME=brownie_metadata
       - DB_USER=brownie-fastapi-server
-      - DB_SSL_MODE=require
+      - DB_SSL_MODE=disable
       - CERT_DIR=/certs
       - REDIS_HOST=redis
       - REDIS_PORT=6379
@@ -121,7 +121,7 @@ services:
     image: grafana/grafana:11.1.3
     container_name: brownie-metadata-grafana
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
@@ -142,7 +142,7 @@ services:
       - DB_NAME=brownie_metadata
       - DB_USER=brownie-fastapi-server
       - DB_PASSWORD=
-      - DB_SSL_MODE=require
+      - DB_SSL_MODE=disable
       - CERT_DIR=/certs
       - BACKUP_PROVIDER=local
       - BACKUP_DESTINATION=/backups

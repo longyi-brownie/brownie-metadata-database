@@ -60,7 +60,10 @@ class BackupConfig(BaseSettings):
     @property
     def database_url(self) -> str:
         """Get the database URL for pg_dump."""
-        return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        if self.db_password:
+            return f"postgresql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        else:
+            return f"postgresql://{self.db_user}@{self.db_host}:{self.db_port}/{self.db_name}"
 
     @property
     def is_cloud_provider(self) -> bool:
