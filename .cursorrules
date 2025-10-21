@@ -13,6 +13,9 @@ black .
 # Sort imports with isort
 isort .
 
+# Run linting with flake8
+flake8 .
+
 # Verify formatting is correct
 black --check --diff .
 isort --check-only --diff .
@@ -20,17 +23,18 @@ isort --check-only --diff .
 
 ### Why This Matters:
 
-- The GitHub Actions CI pipeline runs `black --check --diff .` and `isort --check-only --diff .`
+- The GitHub Actions CI pipeline runs `black --check --diff .`, `isort --check-only --diff .`, and `flake8 .`
 - If these checks fail, the entire CI pipeline fails
-- This prevents code from being merged with formatting issues
+- This prevents code from being merged with formatting and linting issues
 
 ## Development Workflow
 
 1. **Make code changes**
-2. **Run formatting tools:**
+2. **Run formatting and linting tools:**
    ```bash
    black .
    isort .
+   flake8 .
    ```
 3. **Verify formatting:**
    ```bash
@@ -58,6 +62,12 @@ isort --check-only --diff .
 ### Import Sorting Issues
 - isort automatically sorts imports alphabetically
 - Groups imports by type (standard library, third-party, local)
+
+### Flake8 Linting Issues
+- F541: f-string is missing placeholders (use regular string instead)
+- E501: line too long (Black usually handles this)
+- F401: imported but unused
+- E302: expected 2 blank lines before class definition
 
 ## Testing
 

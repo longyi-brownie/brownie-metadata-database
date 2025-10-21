@@ -183,7 +183,7 @@ class TestDockerStackIntegration:
             check=True,
         )
 
-        print(f"=== DEBUG: \\dt command result ===")
+        print("=== DEBUG: \\dt command result ===")
         print(f"Return code: {result.returncode}")
         print(f"STDOUT: {result.stdout}")
         print(f"STDERR: {result.stderr}")
