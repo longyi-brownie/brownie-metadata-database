@@ -38,38 +38,15 @@ copy_certificates() {
 # Function to set up certificates for internal connections
 setup_internal_certs() {
     echo "=== Setting up certificates for internal connections ==="
-    # Create a custom pg_hba.conf that allows internal connections without SSL
-    # This allows internal services to connect without SSL certificates
-    cat > /var/lib/postgresql/data/pg_hba.conf << 'EOF'
-# PostgreSQL Client Authentication Configuration File
-# ===================================================
-
-# TYPE  DATABASE        USER            ADDRESS                 METHOD
-
-# "local" is for Unix domain socket connections only
-local   all             all                                     trust
-
-# IPv4 local connections (localhost only, no password)
-host    all             all             127.0.0.1/32            trust
-
-# IPv6 local connections (localhost only, no password)
-host    all             all             ::1/128                 trust
-
-# Allow internal Docker network connections without SSL
-host    all             all             172.0.0.0/8             trust
-
-# SSL connections with certificate authentication (REQUIRED for external connections)
-hostssl all             all             0.0.0.0/0               cert
-
-# Deny all other connections
-host    all             all             0.0.0.0/0               reject
-
-# Allow replication connections from localhost, by a user with the
-# replication privilege.
-local   replication     all                                     trust
-host    replication     all             127.0.0.1/32            trust
-host    replication     all             ::1/128                 trust
-EOF
+    # Copy the pg_hba.conf from the mounted volume to the data directory
+    if [ -f "/etc/postgresql/pg_hba.conf" ]; then
+        cp /etc/postgresql/pg_hba.conf /var/lib/postgresql/data/pg_hba.conf
+        chown postgres:postgres /var/lib/postgresql/data/pg_hba.conf
+        chmod 644 /var/lib/postgresql/data/pg_hba.conf
+        echo "Copied pg_hba.conf from mounted volume"
+    else
+        echo "WARNING: /etc/postgresql/pg_hba.conf not found, using default"
+    fi
     echo "=== Internal certificate setup completed ==="
 }
 

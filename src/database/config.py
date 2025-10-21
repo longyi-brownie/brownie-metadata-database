@@ -11,8 +11,10 @@ class DatabaseSettings(BaseSettings):
     host: str = Field(default="localhost", description="Database host")
     port: int = Field(default=5432, description="Database port")
     name: str = Field(default="brownie_metadata", description="Database name")
-    user: str = Field(default="brownie", description="Database user")
-    password: str = Field(default="brownie", description="Database password")
+    user: str = Field(default="brownie-fastapi-server", description="Database user")
+    password: str = Field(
+        default="", description="Database password (not used with certificate auth)"
+    )
 
     # Connection pool settings
     pool_size: int = Field(default=10, description="Connection pool size")
