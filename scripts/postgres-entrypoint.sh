@@ -53,46 +53,46 @@ setup_internal_certs() {
 # If this is the first argument and it's 'postgres', or if no arguments are provided (default postgres command)
 if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
     echo "=== Starting PostgreSQL server with SSL ==="
-    
+
+    PGDATA_DIR="${PGDATA:-/var/lib/postgresql/data}"
+
     # Check if database is already initialized
-    if [ ! -f "/var/lib/postgresql/data/PG_VERSION" ]; then
-        echo "=== Database not initialized, letting PostgreSQL initialize first ==="
-        # Let PostgreSQL initialize the database first
+    if [ ! -f "${PGDATA_DIR}/PG_VERSION" ]; then
+        echo "=== Database not initialized, running default entrypoint for setup ==="
+
+        # Run the default entrypoint to perform initialization tasks
         /usr/local/bin/docker-entrypoint.sh postgres &
         POSTGRES_PID=$!
-        
-        # Wait for PostgreSQL to initialize
+
+        # Wait for PostgreSQL to become ready which indicates initialization has completed
         echo "=== Waiting for PostgreSQL initialization to complete ==="
-        wait $POSTGRES_PID
-        
-        # Now copy certificates after initialization
-        echo "=== PostgreSQL initialization complete, copying certificates ==="
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
-    else
-        echo "=== Database already initialized, copying certificates and starting with SSL ==="
-        # Database already exists, just copy certificates and start
-        copy_certificates
-        setup_internal_certs
-        
-        # Start PostgreSQL with SSL configuration as postgres user
-        echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
-        exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
-            -c hba_file=/var/lib/postgresql/data/pg_hba.conf
+        until su-exec postgres pg_isready -U postgres -d postgres >/dev/null 2>&1; do
+            if ! kill -0 ${POSTGRES_PID} >/dev/null 2>&1; then
+                echo "*** PostgreSQL initialization process exited unexpectedly ***"
+                wait ${POSTGRES_PID}
+            fi
+            sleep 1
+        done
+
+        echo "=== Stopping temporary PostgreSQL instance after initialization ==="
+        su-exec postgres pg_ctl -D "${PGDATA_DIR}" -m fast -w stop
+
+        # Ensure the background process has fully exited
+        wait ${POSTGRES_PID}
     fi
+
+    echo "=== Copying certificates and pg_hba.conf ==="
+    copy_certificates
+    setup_internal_certs
+
+    # Start PostgreSQL with SSL configuration as postgres user
+    echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
+    exec su-exec postgres postgres \
+        -c ssl=on \
+        -c ssl_cert_file=${PGDATA_DIR}/server.crt \
+        -c ssl_key_file=${PGDATA_DIR}/server.key \
+        -c ssl_ca_file=${PGDATA_DIR}/ca.crt \
+        -c hba_file=${PGDATA_DIR}/pg_hba.conf
 else
     echo "=== Passing through to original entrypoint: $@ ==="
     # For other commands (like initdb), just pass through to the original entrypoint
