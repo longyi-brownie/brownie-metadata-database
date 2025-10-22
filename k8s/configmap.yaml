@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: brownie-metadata-config
+  namespace: brownie-metadata
+data:
+  # Database Configuration
+  DB_HOST: "postgres-primary"
+  DB_PORT: "5432"
+  DB_NAME: "brownie_metadata"
+  DB_USER: "brownie"
+  DB_PASSWORD: "brownie"
+  DB_POOL_SIZE: "20"
+  DB_MAX_OVERFLOW: "30"
+  
+  # Logging Configuration
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "json"
+  LOG_PERFORMANCE: "true"
+  LOG_AUDIT: "true"
+  
+  # Metrics Configuration
+  METRICS_ENABLED: "true"
+  METRICS_PORT: "8001"
+  
+  # Application Configuration
+  ENVIRONMENT: "production"
+  WORKERS: "4"

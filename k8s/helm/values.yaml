@@ -1,0 +1,241 @@
+# Default values for brownie-metadata-database
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: "fast-ssd"
+
+# Application settings
+app:
+  image:
+    repository: brownie-metadata-db
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  replicas: 3
+  
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+  
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    metricsPort: 8001
+  
+  ingress:
+    enabled: true
+    className: "nginx"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    hosts:
+      - host: brownie-metadata.local
+        paths:
+          - path: /
+            pathType: Prefix
+          - path: /metrics
+            pathType: Prefix
+
+# Database settings
+database:
+  type: "patroni"  # Options: patroni, postgresql, external
+  
+  patroni:
+    enabled: true
+    replicas: 3
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+    storage:
+      size: 10Gi
+      storageClass: "fast-ssd"
+  
+  postgresql:
+    enabled: false
+    auth:
+      postgresPassword: "brownie"
+      username: "brownie"
+      password: "brownie"
+      database: "brownie_metadata"
+    primary:
+      persistence:
+        size: 10Gi
+        storageClass: "fast-ssd"
+    readReplicas:
+      replicaCount: 2
+      persistence:
+        size: 5Gi
+        storageClass: "fast-ssd"
+  
+  external:
+    enabled: false
+    host: "external-postgres.example.com"
+    port: 5432
+    database: "brownie_metadata"
+    username: "brownie"
+    password: "brownie"
+
+# Connection pooling
+pgbouncer:
+  enabled: true
+  replicas: 2
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+  config:
+    poolMode: "transaction"
+    maxClientConn: 1000
+    defaultPoolSize: 25
+    minPoolSize: 5
+    reservePoolSize: 5
+
+# Redis settings
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+      storageClass: "fast-ssd"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "200m"
+
+# Monitoring
+monitoring:
+  enabled: true
+  
+  prometheus:
+    enabled: true
+    server:
+      persistentVolume:
+        enabled: true
+        size: 10Gi
+        storageClass: "fast-ssd"
+      resources:
+        requests:
+          memory: "512Mi"
+          cpu: "250m"
+        limits:
+          memory: "1Gi"
+          cpu: "500m"
+  
+  grafana:
+    enabled: true
+    adminPassword: "admin"
+    persistence:
+      enabled: true
+      size: 5Gi
+      storageClass: "fast-ssd"
+    resources:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
+
+# Configuration
+config:
+  # Database configuration
+  dbHost: "patroni"
+  dbPort: 5432
+  dbName: "brownie_metadata"
+  dbUser: "brownie"
+  dbPoolSize: 20
+  dbMaxOverflow: 30
+  
+  # Logging configuration
+  logLevel: "INFO"
+  logFormat: "json"
+  logPerformance: true
+  logAudit: true
+  
+  # Metrics configuration
+  metricsEnabled: true
+  metricsPort: 8001
+  
+  # Application configuration
+  environment: "production"
+  workers: 4
+
+# Secrets
+secrets:
+  # Base64 encoded secrets
+  postgresPassword: "YnJvd25pZQ=="  # brownie
+  postgresReplicationPassword: "cmVwbGljYXRvcl9wYXNzd29yZA=="  # replicator_password
+  jwtSecretKey: "eW91ci1zZWNyZXQta2V5LWhlcmU="  # your-secret-key-here
+  oktaClientSecret: "eW91ci1va3RhLWNsaWVudC1zZWNyZXQ="  # your-okta-client-secret
+
+# Service account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 2000
+
+# Security context
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+
+# Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Network policies
+networkPolicy:
+  enabled: false
+  ingress:
+    enabled: true
+    egress:
+      enabled: true
+
+# Pod annotations
+podAnnotations: {}
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Affinity
+affinity: {}

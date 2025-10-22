@@ -1,0 +1,47 @@
+groups:
+  - name: brownie-business
+    rules:
+      - alert: HighIncidentVolume
+        expr: brownie_incidents_total > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High incident volume"
+          description: "Total incidents count is {{ $value }}, indicating high system load"
+
+      - alert: ManyActiveIncidents
+        expr: brownie_active_incidents_total > 50
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Many active incidents"
+          description: "There are {{ $value }} active incidents requiring attention"
+
+      - alert: LowTeamCount
+        expr: brownie_teams_total < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No teams configured"
+          description: "No teams found in the system - this may indicate a configuration issue"
+
+      - alert: LowUserCount
+        expr: brownie_users_total < 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "No users configured"
+          description: "No users found in the system - this may indicate a configuration issue"
+
+      - alert: NoAgentConfigs
+        expr: brownie_agent_configs_total < 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No agent configurations"
+          description: "No agent configurations found - Brownie agents may not function properly"

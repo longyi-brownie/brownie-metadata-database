@@ -1,0 +1,19 @@
+FROM postgres:16-alpine
+
+# Copy SSL certificates to a standard location outside data directory
+COPY dev-certs/server.crt /etc/ssl/postgresql/server.crt
+COPY dev-certs/server.key /etc/ssl/postgresql/server.key
+COPY dev-certs/ca.crt /etc/ssl/postgresql/ca.crt
+
+# Set correct ownership and permissions
+RUN chown postgres:postgres /etc/ssl/postgresql/server.* && \
+    chmod 644 /etc/ssl/postgresql/server.crt && \
+    chmod 600 /etc/ssl/postgresql/server.key && \
+    chmod 644 /etc/ssl/postgresql/ca.crt
+
+# Copy init script
+COPY scripts/init-db.sql /docker-entrypoint-initdb.d/01-init-db.sql
+
+# Copy PostgreSQL configuration files
+COPY scripts/pg_hba.conf /etc/postgresql/pg_hba.conf
+COPY scripts/postgresql.conf /etc/postgresql/postgresql.conf
