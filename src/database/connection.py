@@ -9,6 +9,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
+from ..certificates import CertificateValidator, cert_config
 from .config import DatabaseSettings
 
 logger = structlog.get_logger(__name__)
@@ -34,16 +35,31 @@ class DatabaseManager:
         connect_args = {}
         ssl_mode = os.getenv("DB_SSL_MODE", "require")
 
-        if ssl_mode in ["require", "verify-ca", "verify-full"]:
+        if ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             connect_args["sslmode"] = ssl_mode
 
             # Add certificate paths if available
-            cert_dir = os.getenv("CERT_DIR", "/certs")
-            client_cert = os.path.join(cert_dir, "client.crt")
-            client_key = os.path.join(cert_dir, "client.key")
-            ca_cert = os.path.join(cert_dir, "ca.crt")
+            cert_paths = cert_config.get_client_cert_paths()
+            client_cert = cert_paths["client_cert"]
+            client_key = cert_paths["client_key"]
+            ca_cert = cert_paths["ca_cert"]
 
+            # Validate certificates if they exist
             if os.path.exists(client_cert) and os.path.exists(client_key):
+                validator = CertificateValidator(cert_config.cert_dir)
+                validation_results = validator.validate_certificate_chain(
+                    client_cert,
+                    client_key,
+                    ca_cert if os.path.exists(ca_cert) else None,
+                )
+
+                is_valid, issues = validator.get_validation_summary(validation_results)
+                if not is_valid:
+                    logger.warning("Certificate validation failed", issues=issues)
+                    # Continue anyway for development, but log the issues
+                else:
+                    logger.info("Certificate validation passed")
+
                 connect_args["sslcert"] = client_cert
                 connect_args["sslkey"] = client_key
 

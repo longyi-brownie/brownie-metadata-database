@@ -22,12 +22,13 @@ services:
       - ./dev-certs/ca.crt:/var/lib/postgresql/ca.crt:ro
       # PostgreSQL configuration
       - ./scripts/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./scripts/postgresql.conf:/etc/postgresql/postgresql.conf:ro
       # Custom entrypoint script
       - ./scripts/postgres-entrypoint.sh:/scripts/postgres-entrypoint.sh
     entrypoint: ["/scripts/postgres-entrypoint.sh"]
-    command: ["postgres", "-c", "ssl=on", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    command: ["postgres"]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U brownie-fastapi-server -d brownie_metadata -h localhost"]
+      test: ["CMD-SHELL", "pg_isready -U brownie-fastapi-server -d brownie_metadata -h postgres"]
       interval: 10s
       timeout: 5s
       retries: 5

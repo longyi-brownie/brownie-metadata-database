@@ -75,10 +75,19 @@ class MetricsCollector:
             "dbname": os.getenv("DB_NAME", "brownie_metadata"),
             "user": os.getenv("DB_USER", "brownie-fastapi-server"),
             "sslmode": os.getenv("DB_SSL_MODE", "require"),
-            "sslcert": f"{os.getenv('CERT_DIR', '/certs')}/client.crt",
-            "sslkey": f"{os.getenv('CERT_DIR', '/certs')}/client.key",
-            "sslrootcert": f"{os.getenv('CERT_DIR', '/certs')}/ca.crt",
         }
+
+        # Add certificate paths using centralized config
+        from src.certificates import cert_config
+
+        cert_paths = cert_config.get_client_cert_paths()
+        self.db_config.update(
+            {
+                "sslcert": cert_paths["client_cert"],
+                "sslkey": cert_paths["client_key"],
+                "sslrootcert": cert_paths["ca_cert"],
+            }
+        )
 
         self.redis_config = {
             "host": os.getenv("REDIS_HOST", "redis"),

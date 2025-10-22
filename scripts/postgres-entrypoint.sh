@@ -47,6 +47,16 @@ setup_internal_certs() {
     else
         echo "WARNING: /etc/postgresql/pg_hba.conf not found, using default"
     fi
+    
+    # Copy the postgresql.conf from the mounted volume to the data directory
+    if [ -f "/etc/postgresql/postgresql.conf" ]; then
+        cp /etc/postgresql/postgresql.conf /var/lib/postgresql/data/postgresql.conf
+        chown postgres:postgres /var/lib/postgresql/data/postgresql.conf
+        chmod 644 /var/lib/postgresql/data/postgresql.conf
+        echo "Copied postgresql.conf from mounted volume"
+    else
+        echo "WARNING: /etc/postgresql/postgresql.conf not found, using default"
+    fi
     echo "=== Internal certificate setup completed ==="
 }
 
@@ -73,10 +83,7 @@ if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
         # Start PostgreSQL with SSL configuration as postgres user
         echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
         exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+            -c config_file=/var/lib/postgresql/data/postgresql.conf \
             -c hba_file=/var/lib/postgresql/data/pg_hba.conf
     else
         echo "=== Database already initialized, copying certificates and starting with SSL ==="
@@ -87,10 +94,7 @@ if [ "$1" = 'postgres' ] || [ $# -eq 0 ]; then
         # Start PostgreSQL with SSL configuration as postgres user
         echo "=== Starting PostgreSQL with SSL configuration as postgres user ==="
         exec su-exec postgres postgres \
-            -c ssl=on \
-            -c ssl_cert_file=/var/lib/postgresql/data/server.crt \
-            -c ssl_key_file=/var/lib/postgresql/data/server.key \
-            -c ssl_ca_file=/var/lib/postgresql/data/ca.crt \
+            -c config_file=/var/lib/postgresql/data/postgresql.conf \
             -c hba_file=/var/lib/postgresql/data/pg_hba.conf
     fi
 else

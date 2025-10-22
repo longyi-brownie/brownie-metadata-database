@@ -101,12 +101,14 @@ def run_migrations_online() -> None:
         connect_args["sslmode"] = ssl_mode
 
         # Add certificate paths if available
-        cert_dir = os.getenv("CERT_DIR", "/certs")
-        client_cert = os.path.join(cert_dir, "client.crt")
-        client_key = os.path.join(cert_dir, "client.key")
-        ca_cert = os.path.join(cert_dir, "ca.crt")
+        from src.certificates import cert_config
 
-        print(f"DEBUG: Certificate paths - cert_dir: {cert_dir}")
+        cert_paths = cert_config.get_client_cert_paths()
+        client_cert = cert_paths["client_cert"]
+        client_key = cert_paths["client_key"]
+        ca_cert = cert_paths["ca_cert"]
+
+        print(f"DEBUG: Certificate paths - cert_dir: {cert_config.cert_dir}")
         print(f"DEBUG: client_cert exists: {os.path.exists(client_cert)}")
         print(f"DEBUG: client_key exists: {os.path.exists(client_key)}")
         print(f"DEBUG: ca_cert exists: {os.path.exists(ca_cert)}")

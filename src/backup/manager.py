@@ -290,26 +290,29 @@ class BackupManager:
             "--no-password",
         ]
 
-        # Set password via environment
+        # Set password via environment only if password is provided
         env = os.environ.copy()
-        env["PGPASSWORD"] = self.config.db_password
+        if self.config.db_password:
+            env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
         if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
-            # Add certificate paths if available
-            cert_dir = Path(self.config.cert_dir)
-            client_cert = cert_dir / "client.crt"
-            client_key = cert_dir / "client.key"
-            ca_cert = cert_dir / "ca.crt"
+            # Add certificate paths using centralized config
+            from ..certificates import cert_config
 
-            if client_cert.exists() and client_key.exists():
-                env["PGSSLCERT"] = str(client_cert)
-                env["PGSSLKEY"] = str(client_key)
+            cert_paths = cert_config.get_client_cert_paths()
+            client_cert = cert_paths["client_cert"]
+            client_key = cert_paths["client_key"]
+            ca_cert = cert_paths["ca_cert"]
 
-            if ca_cert.exists():
-                env["PGSSLROOTCERT"] = str(ca_cert)
+            if os.path.exists(client_cert) and os.path.exists(client_key):
+                env["PGSSLCERT"] = client_cert
+                env["PGSSLKEY"] = client_key
+
+            if os.path.exists(ca_cert):
+                env["PGSSLROOTCERT"] = ca_cert
         elif self.config.db_ssl_mode == "disable":
             # For disable mode, explicitly set SSL mode to disable
             env["PGSSLMODE"] = "disable"
@@ -334,26 +337,29 @@ class BackupManager:
             "--no-password",
         ]
 
-        # Set password via environment
+        # Set password via environment only if password is provided
         env = os.environ.copy()
-        env["PGPASSWORD"] = self.config.db_password
+        if self.config.db_password:
+            env["PGPASSWORD"] = self.config.db_password
 
         # Add SSL options via environment variables
         if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
-            # Add certificate paths if available
-            cert_dir = Path(self.config.cert_dir)
-            client_cert = cert_dir / "client.crt"
-            client_key = cert_dir / "client.key"
-            ca_cert = cert_dir / "ca.crt"
+            # Add certificate paths using centralized config
+            from ..certificates import cert_config
 
-            if client_cert.exists() and client_key.exists():
-                env["PGSSLCERT"] = str(client_cert)
-                env["PGSSLKEY"] = str(client_key)
+            cert_paths = cert_config.get_client_cert_paths()
+            client_cert = cert_paths["client_cert"]
+            client_key = cert_paths["client_key"]
+            ca_cert = cert_paths["ca_cert"]
 
-            if ca_cert.exists():
-                env["PGSSLROOTCERT"] = str(ca_cert)
+            if os.path.exists(client_cert) and os.path.exists(client_key):
+                env["PGSSLCERT"] = client_cert
+                env["PGSSLKEY"] = client_key
+
+            if os.path.exists(ca_cert):
+                env["PGSSLROOTCERT"] = ca_cert
         elif self.config.db_ssl_mode == "disable":
             # For disable mode, explicitly set SSL mode to disable
             env["PGSSLMODE"] = "disable"
@@ -369,18 +375,20 @@ class BackupManager:
         if self.config.db_ssl_mode in ["require", "verify-ca", "verify-full", "prefer"]:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
-            # Add certificate paths if available
-            cert_dir = Path(self.config.cert_dir)
-            client_cert = cert_dir / "client.crt"
-            client_key = cert_dir / "client.key"
-            ca_cert = cert_dir / "ca.crt"
+            # Add certificate paths using centralized config
+            from ..certificates import cert_config
 
-            if client_cert.exists() and client_key.exists():
-                env["PGSSLCERT"] = str(client_cert)
-                env["PGSSLKEY"] = str(client_key)
+            cert_paths = cert_config.get_client_cert_paths()
+            client_cert = cert_paths["client_cert"]
+            client_key = cert_paths["client_key"]
+            ca_cert = cert_paths["ca_cert"]
 
-            if ca_cert.exists():
-                env["PGSSLROOTCERT"] = str(ca_cert)
+            if os.path.exists(client_cert) and os.path.exists(client_key):
+                env["PGSSLCERT"] = client_cert
+                env["PGSSLKEY"] = client_key
+
+            if os.path.exists(ca_cert):
+                env["PGSSLROOTCERT"] = ca_cert
         elif self.config.db_ssl_mode == "disable":
             # For disable mode, explicitly set SSL mode to disable
             env["PGSSLMODE"] = "disable"

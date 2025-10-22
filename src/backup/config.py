@@ -50,7 +50,9 @@ class BackupConfig(BaseSettings):
     db_port: int = Field(default=5432, description="Database port")
     db_name: str = Field(default="brownie_metadata", description="Database name")
     db_user: str = Field(default="brownie-fastapi-server", description="Database user")
-    db_password: str = Field(default="brownie", description="Database password")
+    db_password: str = Field(
+        default="", description="Database password (not used with trusted network)"
+    )
     db_ssl_mode: str = Field(default="require", description="Database SSL mode")
     cert_dir: str = Field(default="/certs", description="Certificate directory")
 
