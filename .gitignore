@@ -1,0 +1,83 @@
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Database
+*.db
+*.sqlite3
+
+# Docker
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+
+# Backup files
+*.backup
+*.bak
+
+# Temporary files
+tmp/
+temp/
+
+# Security - NEVER commit certificates or keys
+certs/
+*.crt
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+vault-token
+*.vault
+
+# Local development certificates
+dev-certs/
+local-certs/

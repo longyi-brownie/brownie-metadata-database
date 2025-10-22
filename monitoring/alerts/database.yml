@@ -1,0 +1,65 @@
+groups:
+  - name: brownie-database
+    rules:
+      - alert: DatabaseDown
+        expr: up{job="brownie-metrics-sidecar"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Brownie database is down"
+          description: "Database metrics sidecar has been down for more than 1 minute"
+
+      - alert: HighDatabaseConnections
+        expr: brownie_db_connections_total{state="active"} > 80
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connection count"
+          description: "Database has {{ $value }} active connections"
+
+      - alert: DatabaseQueryErrors
+        expr: rate(brownie_db_query_errors_total[5m]) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database query error rate"
+          description: "Database query error rate is {{ $value }} errors/second"
+
+      - alert: DatabaseSizeHigh
+        expr: brownie_db_size_bytes > 10737418240  # 10GB
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database size is high"
+          description: "Database size is {{ $value | humanize1024 }}B"
+
+      - alert: RedisDown
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "Redis cache has been down for more than 1 minute"
+
+      - alert: LowRedisHitRate
+        expr: brownie_redis_hit_rate < 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low Redis cache hit rate"
+          description: "Redis hit rate is {{ $value | humanizePercentage }}"
+
+      - alert: HighRedisMemoryUsage
+        expr: brownie_redis_memory_usage_bytes > 1073741824  # 1GB
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High Redis memory usage"
+          description: "Redis is using {{ $value | humanize1024 }}B of memory"

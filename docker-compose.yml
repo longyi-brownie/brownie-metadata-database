@@ -1,0 +1,168 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    container_name: brownie-metadata-postgres
+    environment:
+      POSTGRES_DB: brownie_metadata
+      POSTGRES_USER: brownie
+      # Temporary password only for initial database setup
+      # After init-db.sql runs, the 'brownie' user is disabled (NOLOGIN)
+      # All external connections require SSL certificates
+      POSTGRES_PASSWORD: temp_password_for_init
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    command: [
+      "postgres",
+      "-c", "ssl=on",
+      "-c", "ssl_cert_file=/etc/ssl/postgresql/server.crt",
+      "-c", "ssl_key_file=/etc/ssl/postgresql/server.key",
+      "-c", "ssl_ca_file=/etc/ssl/postgresql/ca.crt",
+      "-c", "hba_file=/etc/postgresql/pg_hba.conf"
+    ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brownie-fastapi-server -d brownie_metadata -h postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Migration service
+  migrate:
+    build: .
+    container_name: brownie-metadata-migrate
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: brownie_metadata
+      DB_USER: "brownie-fastapi-server"
+      DB_SSL_MODE: prefer
+      CERT_DIR: /certs
+    volumes:
+      - ./dev-certs:/certs:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "sleep 10 && alembic upgrade head"]
+
+  # Redis for caching
+  redis:
+    image: redis:7-alpine
+    container_name: brownie-metadata-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Custom metrics sidecar for enterprise monitoring
+  metrics-sidecar:
+    build: 
+      context: .
+      dockerfile: Dockerfile.metrics
+    container_name: brownie-metadata-metrics
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=brownie_metadata
+      - DB_USER=brownie-fastapi-server
+      - DB_SSL_MODE=verify-full
+      - CERT_DIR=/certs
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - METRICS_PORT=9091
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+    volumes:
+      - ./dev-certs:/certs:ro
+      - ./monitoring/dashboards:/app/dashboards:ro
+      - ./monitoring/alerts:/app/alerts:ro
+    ports:
+      - "9091:9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["python", "-m", "metrics_sidecar"]
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: brownie-metadata-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts:/etc/prometheus/alerts:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+    depends_on:
+      - metrics-sidecar
+
+  # Grafana for enterprise dashboards
+  grafana:
+    image: grafana/grafana:11.1.3
+    container_name: brownie-metadata-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/dashboards:/var/lib/grafana/dashboards:ro
+      - ./monitoring/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    depends_on:
+      - prometheus
+
+  # Backup service
+  backup:
+    build: .
+    container_name: brownie-metadata-backup
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=brownie_metadata
+      - DB_USER=brownie-fastapi-server
+      - DB_PASSWORD=
+      - BACKUP_DB_SSL_MODE=verify-full
+      - CERT_DIR=/certs
+      - BACKUP_PROVIDER=local
+      - BACKUP_DESTINATION=/backups
+      - BACKUP_SCHEDULE=0 2 * * *
+      - BACKUP_RETENTION_DAYS=30
+      - BACKUP_COMPRESSION=true
+      - BACKUP_ENCRYPTION=true
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+    volumes:
+      - ./dev-certs:/certs:ro
+      - backup_data:/backups
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    command: ["python", "-m", "src.backup.scheduler"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  backup_data:
+
