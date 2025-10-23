@@ -1,13 +1,49 @@
 # Brownie Metadata Database
 
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/longyi-brownie/brownie-metadata-database)
+[![PyPI](https://img.shields.io/pypi/v/brownie-metadata-db.svg)](https://pypi.org/project/brownie-metadata-db/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.12+-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/python-3.9+-blue.svg)](https://python.org)
 [![PostgreSQL](https://img.shields.io/badge/postgresql-16+-blue.svg)](https://postgresql.org)
 
 The Brownie Metadata Database is the central metadata store for the [Brownie](https://github.com/longyi-brownie/brownie) incident assistant platform. It provides enterprise-grade data management, access control, and operational capabilities for managing incident data, team configurations, and system metadata.
 
 > **Version 0.1.0** - Complete database infrastructure with enterprise security, monitoring, and high availability features.
+
+## 📦 Python Library
+
+This project is also available as a Python library for easy integration into other projects:
+
+```bash
+pip install brownie-metadata-db==0.1.0
+```
+
+**PyPI Package**: https://pypi.org/project/brownie-metadata-db/0.1.0/
+
+### Quick Library Usage
+
+```python
+import brownie_metadata_db as bmd
+
+# Configure logging
+bmd.configure_logging()
+
+# Database models
+org = bmd.Organization(name="My Org", slug="my-org")
+user = bmd.User(username="john.doe", email="john@example.com", role=bmd.UserRole.ADMIN)
+
+# Backup management
+backup_manager = bmd.BackupManager(config)
+
+# Certificate validation
+cert_validator = bmd.CertificateValidator()
+
+# CLI commands
+# brownie-backup --help
+```
+
+**Available Classes**: 26+ classes including models, managers, and utilities
+**CLI Tool**: `brownie-backup` command for backup operations
 
 ## Overview
 
@@ -122,31 +158,48 @@ open http://localhost:3000
 
 ```
 brownie-metadata-database/
-├── alembic/                    # Database migrations
-├── k8s/                        # Kubernetes deployment configs
-├── monitoring/                 # Enterprise monitoring stack
-│   ├── dashboards/            # Grafana dashboards
-│   ├── alerts/                # Prometheus alerting rules
-│   ├── provisioning/          # Grafana auto-configuration
-│   └── README.md              # Monitoring documentation
-├── runbooks/                  # Operational procedures
-│   ├── RUNBOOK-*.md          # Specific runbooks
-│   └── README.md             # Runbook index
-├── scripts/                   # Database setup scripts
-│   ├── init-db.sql           # Database initialization
-│   ├── setup-dev-certs.sh    # Certificate generation
+├── brownie_metadata_db/       # Python package (library)
+│   ├── __init__.py           # Main package exports
+│   ├── backup/               # Backup system
+│   │   ├── cli.py           # CLI commands
+│   │   ├── manager.py       # BackupManager
+│   │   ├── providers.py     # Storage providers
+│   │   └── scheduler.py     # Backup scheduling
+│   ├── certificates/         # SSL certificate management
+│   ├── database/            # Database layer
+│   │   ├── models/          # SQLAlchemy models
+│   │   ├── connection.py    # Connection management
+│   │   └── config.py        # Database configuration
+│   └── logging/             # Logging utilities
+├── alembic/                  # Database migrations
+├── k8s/                      # Kubernetes deployment configs
+├── monitoring/               # Enterprise monitoring stack
+│   ├── dashboards/          # Grafana dashboards
+│   ├── alerts/              # Prometheus alerting rules
+│   ├── provisioning/        # Grafana auto-configuration
+│   └── README.md            # Monitoring documentation
+├── runbooks/                # Operational procedures
+│   ├── RUNBOOK-*.md        # Specific runbooks
+│   └── README.md           # Runbook index
+├── scripts/                 # Database setup scripts
+│   ├── package-manager.py  # Package management script
+│   ├── init-db.sql         # Database initialization
+│   ├── setup-dev-certs.sh  # Certificate generation
 │   ├── setup-postgres-ssl.sh # SSL configuration
-│   ├── pg_hba.conf           # PostgreSQL auth config
-│   └── postgresql.conf       # PostgreSQL server config
-├── src/                       # Core database code
-│   ├── certificates.py       # Server certificate management
-│   └── database/             # SQLAlchemy models and connection
-├── tests/                     # Test suite
-├── metrics_sidecar/          # Custom metrics collection
-├── docker-compose.yml        # Complete stack definition
-├── Dockerfile                # Database migration container
-├── Dockerfile.metrics        # Metrics sidecar container
-└── README.md                 # This file
+│   ├── pg_hba.conf         # PostgreSQL auth config
+│   └── postgresql.conf     # PostgreSQL server config
+├── tests/                   # Test suite
+├── metrics_sidecar/        # Custom metrics collection
+├── .github/workflows/      # CI/CD pipelines
+│   ├── integration-tests.yml
+│   └── publish-package.yml
+├── docker-compose.yml      # Complete stack definition
+├── Dockerfile              # Database migration container
+├── Dockerfile.metrics      # Metrics sidecar container
+├── pyproject.toml          # Package configuration
+├── PACKAGE_MAINTENANCE.md  # Package maintenance guide
+├── CHANGELOG.md            # Version history
+└── README.md               # This file
 ```
 
 ### Enterprise Monitoring Features

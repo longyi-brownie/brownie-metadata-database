@@ -5,44 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2024-10-22
+## [Unreleased]
 
 ### Added
-- **Complete database infrastructure** with PostgreSQL 16 and SSL/TLS encryption
-- **Certificate-based authentication** system (zero password authentication)
-- **Enterprise monitoring stack** with Prometheus, Grafana, and custom metrics
-- **Kubernetes deployment** with Helm charts and high availability
-- **Docker Compose** setup for local development
-- **Comprehensive backup system** with multiple storage providers
-- **Alembic migrations** for database schema management
-- **Structured logging** and performance monitoring
-- **CI/CD pipeline** with GitHub Actions
-- **Multi-tenant data model** for organizations, teams, users, and incidents
-- **Agent configuration management** for AI assistant settings
-- **Health checks** and service monitoring
-- **Enterprise security** with zero-trust architecture
-- **Comprehensive test suite** with integration tests
-- **Documentation** including README, agent docs, and runbooks
+- Package management script (`scripts/package-manager.py`)
+- GitHub Actions workflow for automated PyPI publishing
+- Comprehensive package maintenance documentation
 
-### Security
-- **SSL/TLS encryption** for all database connections
-- **Client certificate authentication** required for external access
-- **Internal Docker network** trusted for service-to-service communication
-- **Multi-tenant data isolation** by organization
-- **Audit logging** for all database access
+### Changed
+- Converted project to Python library with proper package structure
+- Renamed `src/` directory to `brownie_metadata_db/` for package naming
+- Updated all imports to use absolute package imports
 
-### Infrastructure
-- **PostgreSQL 16** with custom Docker image
-- **Redis** for caching and session storage
-- **Patroni** for PostgreSQL high availability
-- **PgBouncer** for connection pooling
-- **Custom metrics sidecar** for business and technical metrics
-- **Prometheus** for metrics collection and alerting
-- **Grafana** dashboards for monitoring and visualization
+## [0.1.0] - 2024-10-23
 
-### Development
-- **Code quality tools**: Black, isort, flake8, mypy
-- **Automated testing** with pytest and coverage
-- **Docker-based development** environment
-- **GitHub Actions** CI/CD pipeline
-- **Comprehensive documentation** for AI agents and developers
+### Added
+- **Initial Release** - Complete database infrastructure with enterprise features
+- **Python Library** - Available on PyPI as `brownie-metadata-db`
+- **Database Models** - Organization, Team, User, Incident, AgentConfig, Stats
+- **Backup System** - Multi-provider backup with S3, GCS, Azure support
+- **Certificate Management** - SSL/TLS certificate validation and management
+- **Logging System** - Structured logging with audit and performance tracking
+- **CLI Tool** - `brownie-backup` command for backup operations
+- **Enterprise Monitoring** - Prometheus metrics and Grafana dashboards
+- **Docker Support** - Complete Docker Compose stack
+- **Kubernetes Support** - Production-ready K8s manifests
+- **Database Migrations** - Alembic-based schema management
+- **SSL/TLS Security** - Certificate-based authentication
+- **Multi-tenant Architecture** - Organization-scoped data isolation
+- **Comprehensive Testing** - Unit, integration, and Docker tests
+
+### Features
+- **26+ Exported Classes** - Complete API for database operations
+- **Type Hints** - Full type annotation support
+- **Documentation** - Comprehensive docstrings and README
+- **CI/CD Pipeline** - Automated testing and publishing
+- **Code Quality** - Black, isort, flake8, mypy integration
+
+### Technical Details
+- **Python Support**: 3.9+
+- **Database**: PostgreSQL 16+ with SSL
+- **ORM**: SQLAlchemy 2.0+
+- **Migrations**: Alembic
+- **Monitoring**: Prometheus + Grafana
+- **Backup**: Multi-cloud support (S3, GCS, Azure)
+- **Security**: Certificate-based authentication
+- **Caching**: Redis integration
+
+---
+
+## Package Information
+
+- **PyPI Package**: https://pypi.org/project/brownie-metadata-db/
+- **GitHub Repository**: https://github.com/longyi-brownie/brownie-metadata-database
+- **Documentation**: See README.md and inline docstrings
+- **Support**: GitHub Issues and Discussions
+
+## Version History
+
+- **0.1.0** - Initial release with complete database infrastructure
