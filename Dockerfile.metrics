@@ -16,8 +16,7 @@ RUN apt-get update && apt-get install -y \
 COPY metrics_sidecar/requirements-metrics.txt .
 RUN pip install --no-cache-dir -r requirements-metrics.txt --root-user-action=ignore
 
-# Copy source code and metrics sidecar
-COPY src/ ./src/
+# Copy metrics sidecar
 COPY metrics_sidecar/ ./metrics_sidecar/
 
 # Create non-root user

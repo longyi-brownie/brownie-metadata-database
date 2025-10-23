@@ -10,20 +10,65 @@ This sidecar collects and exports custom metrics for enterprise monitoring:
 - Business metrics (incidents, teams, users)
 """
 
+# Simple logging configuration for metrics sidecar
 import logging
 import os
 import sys
 import time
+from typing import Any, Dict
 
 import psycopg
 import redis
+import structlog
 from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import structlog
+class LoggingConfig:
+    """Simple logging configuration for metrics sidecar."""
 
-from src.logging.config import LoggingConfig, configure_logging
+    def __init__(self):
+        self.log_level = os.getenv("LOG_LEVEL", "INFO")
+        self.log_format = os.getenv("LOG_FORMAT", "json")
+
+    def get_log_level(self) -> int:
+        """Get the log level as an integer."""
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+        }
+        return level_map.get(self.log_level.upper(), logging.INFO)
+
+
+def configure_logging(config: LoggingConfig) -> None:
+    """Configure logging for the metrics sidecar."""
+    logging.basicConfig(
+        level=config.get_log_level(),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        stream=sys.stdout,
+    )
+
+    # Configure structlog
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer(),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
 
 # Configure centralized logging
 config = LoggingConfig()

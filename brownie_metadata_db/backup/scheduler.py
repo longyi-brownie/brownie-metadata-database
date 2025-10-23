@@ -10,9 +10,6 @@ from typing import Optional
 
 import structlog
 
-# Add src to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
 try:
     from croniter import croniter
 
@@ -20,8 +17,8 @@ try:
 except ImportError:
     CRONITER_AVAILABLE = False
 
-from .config import BackupConfig
-from .manager import BackupManager
+from brownie_metadata_db.backup.config import BackupConfig
+from brownie_metadata_db.backup.manager import BackupManager
 
 logger = structlog.get_logger(__name__)
 

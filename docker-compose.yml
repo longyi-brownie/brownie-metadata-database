@@ -157,7 +157,7 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
-    command: ["python", "-m", "src.backup.scheduler"]
+    command: ["python", "-m", "brownie_metadata_db.backup.scheduler"]
 
 volumes:
   postgres_data:

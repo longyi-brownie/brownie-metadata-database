@@ -315,7 +315,7 @@ class TestDockerStackIntegration:
                 "backup",
                 "python",
                 "-m",
-                "src.backup.cli",
+                "brownie_metadata_db.backup.cli",
                 "backup",
             ],
             capture_output=True,
