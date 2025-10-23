@@ -57,7 +57,7 @@ class TestAuditLogger:
     def test_log_event(self):
         """Test logging an audit event."""
         logger = AuditLogger()
-        
+
         with patch.object(logger.logger, "info") as mock_info:
             logger.log_event(
                 event_type="create",
@@ -120,8 +120,10 @@ class TestPerformanceLogger:
         """Test logging a performance operation using context manager."""
         logger = PerformanceLogger()
 
-        with patch.object(logger.logger, "info") as mock_info, \
-             patch.object(logger.logger, "warning") as mock_warning:
+        with (
+            patch.object(logger.logger, "info") as mock_info,
+            patch.object(logger.logger, "warning") as mock_warning,
+        ):
             with logger.log_operation("test_operation"):
                 pass
 
