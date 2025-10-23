@@ -5,7 +5,14 @@ from datetime import datetime
 
 import pytest
 
-from database.models import AgentConfig, Incident, Organization, Stats, Team, User
+from brownie_metadata_db.database.models import (
+    AgentConfig,
+    Incident,
+    Organization,
+    Stats,
+    Team,
+    User,
+)
 
 
 class TestOrganization:

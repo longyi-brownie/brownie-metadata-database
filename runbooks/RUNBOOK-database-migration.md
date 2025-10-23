@@ -29,7 +29,7 @@ print(f'Latest backup: {backups[0] if backups else \"None\"}')
 ```bash
 # Check database health
 kubectl exec -n brownie-metadata deployment/brownie-metadata-app -- python -c "
-from src.database.connection import get_db_engine
+from brownie_metadata_db.database.connection import get_db_engine
 engine = get_db_engine()
 with engine.connect() as conn:
     result = conn.execute('SELECT 1')

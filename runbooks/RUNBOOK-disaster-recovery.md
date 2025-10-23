@@ -123,7 +123,7 @@ WHERE contype = 'f';
 
 # 3. Run data consistency checks
 kubectl exec -n brownie-metadata deployment/brownie-metadata-app -- python -c "
-from src.database.connection import get_db_engine
+from brownie_metadata_db.database.connection import get_db_engine
 engine = get_db_engine()
 with engine.connect() as conn:
     # Check for orphaned records
@@ -338,7 +338,7 @@ curl -f http://localhost:8000/health || echo "Application health check failed"
 ```bash
 # Verify data integrity
 kubectl exec -n brownie-metadata deployment/brownie-metadata-app -- python -c "
-from src.database.connection import get_db_engine
+from brownie_metadata_db.database.connection import get_db_engine
 engine = get_db_engine()
 with engine.connect() as conn:
     # Check record counts

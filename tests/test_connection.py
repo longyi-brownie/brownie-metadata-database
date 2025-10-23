@@ -3,8 +3,11 @@
 import pytest
 from sqlalchemy.exc import OperationalError
 
-from src.database.config import DatabaseSettings
-from src.database.connection import DatabaseManager, get_database_manager
+from brownie_metadata_db.database.config import DatabaseSettings
+from brownie_metadata_db.database.connection import (
+    DatabaseManager,
+    get_database_manager,
+)
 
 
 class TestDatabaseManager:
