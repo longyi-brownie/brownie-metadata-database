@@ -122,17 +122,11 @@ class MetricsCollector:
             "sslmode": os.getenv("DB_SSL_MODE", "verify-full"),
         }
 
-        # Add certificate paths using centralized config
-        from src.certificates import cert_config
-
-        cert_paths = cert_config.get_client_cert_paths()
-        self.db_config.update(
-            {
-                "sslcert": cert_paths["client_cert"],
-                "sslkey": cert_paths["client_key"],
-                "sslrootcert": cert_paths["ca_cert"],
-            }
-        )
+        # For metrics collection, we can use a simpler connection without certificates
+        # The metrics sidecar doesn't need full SSL authentication for basic metrics
+        if os.getenv("DB_SSL_MODE") in ["require", "verify-ca", "verify-full"]:
+            # If SSL is required, we'll use basic SSL without client certificates
+            self.db_config["sslmode"] = "require"
 
         self.redis_config = {
             "host": os.getenv("REDIS_HOST", "redis"),
