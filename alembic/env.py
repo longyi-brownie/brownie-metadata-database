@@ -10,8 +10,8 @@ from alembic import context
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Import our models
-from database.base import Base
-from database.models import *  # Import all models
+from brownie_metadata_db.database.base import Base
+from brownie_metadata_db.database.models import *  # Import all models
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -91,7 +91,7 @@ def run_migrations_online() -> None:
         connect_args["sslmode"] = ssl_mode
 
         # Add certificate paths if available
-        from src.certificates.config import CertificateConfig
+        from brownie_metadata_db.certificates.config import CertificateConfig
 
         # Create a new config instance to pick up environment variables
         cert_config = CertificateConfig()

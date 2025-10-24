@@ -1,8 +1,6 @@
 """Pytest configuration and fixtures."""
 
 import os
-
-# Add src to path
 import sys
 import uuid
 from typing import Generator
@@ -12,11 +10,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
-
-from database.base import Base
-from database.config import DatabaseSettings
-from database.models import AgentConfig, Incident, Organization, Stats, Team, User
+from brownie_metadata_db.database.base import Base
+from brownie_metadata_db.database.config import DatabaseSettings
+from brownie_metadata_db.database.models import (
+    AgentConfig,
+    Incident,
+    Organization,
+    Stats,
+    Team,
+    User,
+)
 
 
 @pytest.fixture(scope="session")

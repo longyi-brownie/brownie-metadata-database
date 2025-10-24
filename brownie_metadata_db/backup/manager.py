@@ -300,7 +300,7 @@ class BackupManager:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths using centralized config
-            from ..certificates import cert_config
+            from brownie_metadata_db.certificates import cert_config
 
             cert_paths = cert_config.get_client_cert_paths()
             client_cert = cert_paths["client_cert"]
@@ -347,7 +347,7 @@ class BackupManager:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths using centralized config
-            from ..certificates import cert_config
+            from brownie_metadata_db.certificates import cert_config
 
             cert_paths = cert_config.get_client_cert_paths()
             client_cert = cert_paths["client_cert"]
@@ -376,7 +376,7 @@ class BackupManager:
             env["PGSSLMODE"] = self.config.db_ssl_mode
 
             # Add certificate paths using centralized config
-            from ..certificates import cert_config
+            from brownie_metadata_db.certificates import cert_config
 
             cert_paths = cert_config.get_client_cert_paths()
             client_cert = cert_paths["client_cert"]

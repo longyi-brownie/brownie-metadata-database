@@ -1,6 +1,3 @@
-"""Certificate management package for PostgreSQL SSL connections."""
+"""Certificates module re-exports."""
 
-from .config import CertificateConfig, cert_config
-from .validation import CertificateValidator
-
-__all__ = ["CertificateValidator", "CertificateConfig", "cert_config"]
+from brownie_metadata_db.certificates import *

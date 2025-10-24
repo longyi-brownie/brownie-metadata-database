@@ -1,7 +1,3 @@
-"""Backup system for Brownie Metadata Database."""
+"""Backup module re-exports."""
 
-from .cli import main
-from .manager import BackupManager
-from .providers import BackupProvider, LocalProvider, S3Provider
-
-__all__ = ["main", "BackupManager", "BackupProvider", "S3Provider", "LocalProvider"]
+from brownie_metadata_db.backup import *

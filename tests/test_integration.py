@@ -10,9 +10,7 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
-
-from database.base import Base as DatabaseBase
+from brownie_metadata_db.database.base import Base as DatabaseBase
 
 
 def _is_postgres_available():

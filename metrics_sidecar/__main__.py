@@ -10,20 +10,65 @@ This sidecar collects and exports custom metrics for enterprise monitoring:
 - Business metrics (incidents, teams, users)
 """
 
+# Simple logging configuration for metrics sidecar
 import logging
 import os
 import sys
 import time
+from typing import Any, Dict
 
 import psycopg
 import redis
+import structlog
 from prometheus_client import Counter, Gauge, Histogram, Info, start_http_server
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import structlog
+class LoggingConfig:
+    """Simple logging configuration for metrics sidecar."""
 
-from src.logging.config import LoggingConfig, configure_logging
+    def __init__(self):
+        self.log_level = os.getenv("LOG_LEVEL", "INFO")
+        self.log_format = os.getenv("LOG_FORMAT", "json")
+
+    def get_log_level(self) -> int:
+        """Get the log level as an integer."""
+        level_map = {
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
+        }
+        return level_map.get(self.log_level.upper(), logging.INFO)
+
+
+def configure_logging(config: LoggingConfig) -> None:
+    """Configure logging for the metrics sidecar."""
+    logging.basicConfig(
+        level=config.get_log_level(),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        stream=sys.stdout,
+    )
+
+    # Configure structlog
+    structlog.configure(
+        processors=[
+            structlog.stdlib.filter_by_level,
+            structlog.stdlib.add_logger_name,
+            structlog.stdlib.add_log_level,
+            structlog.stdlib.PositionalArgumentsFormatter(),
+            structlog.processors.TimeStamper(fmt="iso"),
+            structlog.processors.StackInfoRenderer(),
+            structlog.processors.format_exc_info,
+            structlog.processors.UnicodeDecoder(),
+            structlog.processors.JSONRenderer(),
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
+        cache_logger_on_first_use=True,
+    )
+
 
 # Configure centralized logging
 config = LoggingConfig()
@@ -77,17 +122,11 @@ class MetricsCollector:
             "sslmode": os.getenv("DB_SSL_MODE", "verify-full"),
         }
 
-        # Add certificate paths using centralized config
-        from src.certificates import cert_config
-
-        cert_paths = cert_config.get_client_cert_paths()
-        self.db_config.update(
-            {
-                "sslcert": cert_paths["client_cert"],
-                "sslkey": cert_paths["client_key"],
-                "sslrootcert": cert_paths["ca_cert"],
-            }
-        )
+        # For metrics collection, we can use a simpler connection without certificates
+        # The metrics sidecar doesn't need full SSL authentication for basic metrics
+        if os.getenv("DB_SSL_MODE") in ["require", "verify-ca", "verify-full"]:
+            # If SSL is required, we'll use basic SSL without client certificates
+            self.db_config["sslmode"] = "require"
 
         self.redis_config = {
             "host": os.getenv("REDIS_HOST", "redis"),

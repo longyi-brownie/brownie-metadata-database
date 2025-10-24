@@ -54,28 +54,26 @@ class TestAuditLogger:
 
         assert logger.logger is not None
 
-    @patch("src.logging.audit.get_logger")
-    def test_log_event(self, mock_get_logger):
+    def test_log_event(self):
         """Test logging an audit event."""
         logger = AuditLogger()
 
-        mock_logger = mock_get_logger.return_value
+        with patch.object(logger.logger, "info") as mock_info:
+            logger.log_event(
+                event_type="create",
+                resource_type="incident",
+                resource_id="inc123",
+                user_id="user123",
+                org_id="org456",
+            )
 
-        logger.log_event(
-            event_type="create",
-            resource_type="incident",
-            resource_id="inc123",
-            user_id="user123",
-            org_id="org456",
-        )
-
-        mock_logger.info.assert_called_once()
-        call_args = mock_logger.info.call_args
-        assert call_args[1]["event_type"] == "create"
-        assert call_args[1]["resource_type"] == "incident"
-        assert call_args[1]["resource_id"] == "inc123"
-        assert call_args[1]["user_id"] == "user123"
-        assert call_args[1]["org_id"] == "org456"
+            mock_info.assert_called_once()
+            call_args = mock_info.call_args
+            assert call_args[1]["event_type"] == "create"
+            assert call_args[1]["resource_type"] == "incident"
+            assert call_args[1]["resource_id"] == "inc123"
+            assert call_args[1]["user_id"] == "user123"
+            assert call_args[1]["org_id"] == "org456"
 
     def test_log_create(self):
         """Test logging a create event."""
@@ -118,61 +116,56 @@ class TestPerformanceLogger:
 
         assert logger.logger is not None
 
-    @patch("src.logging.performance.get_logger")
-    def test_log_operation_context_manager(self, mock_get_logger):
+    def test_log_operation_context_manager(self):
         """Test logging a performance operation using context manager."""
         logger = PerformanceLogger()
 
-        mock_logger = mock_get_logger.return_value
+        with (
+            patch.object(logger.logger, "info") as mock_info,
+            patch.object(logger.logger, "warning") as mock_warning,
+        ):
+            with logger.log_operation("test_operation"):
+                pass
 
-        with logger.log_operation("test_operation"):
-            pass
+            # Should have called info or warning
+            assert mock_info.called or mock_warning.called
 
-        # Should have called info or warning
-        assert mock_logger.info.called or mock_logger.warning.called
-
-    @patch("src.logging.performance.get_logger")
-    def test_log_query(self, mock_get_logger):
+    def test_log_query(self):
         """Test logging a database query."""
         logger = PerformanceLogger()
 
-        mock_logger = mock_get_logger.return_value
+        with patch.object(logger.logger, "debug") as mock_debug:
+            logger.log_query("SELECT * FROM users", 0.5, rows_affected=10)
 
-        logger.log_query("SELECT * FROM users", 0.5, rows_affected=10)
+            mock_debug.assert_called_once()
+            call_args = mock_debug.call_args
+            assert call_args[1]["query"] == "SELECT * FROM users"
+            assert call_args[1]["duration_seconds"] == 0.5
+            assert call_args[1]["rows_affected"] == 10
 
-        mock_logger.debug.assert_called_once()
-        call_args = mock_logger.debug.call_args
-        assert call_args[1]["query"] == "SELECT * FROM users"
-        assert call_args[1]["duration_seconds"] == 0.5
-        assert call_args[1]["rows_affected"] == 10
-
-    @patch("src.logging.performance.get_logger")
-    def test_log_slow_query(self, mock_get_logger):
+    def test_log_slow_query(self):
         """Test logging a slow query."""
         logger = PerformanceLogger()
 
-        mock_logger = mock_get_logger.return_value
+        with patch.object(logger.logger, "warning") as mock_warning:
+            logger.log_query(
+                "SELECT * FROM users", 2.0, rows_affected=10
+            )  # > 1.0 threshold
 
-        logger.log_query(
-            "SELECT * FROM users", 2.0, rows_affected=10
-        )  # > 1.0 threshold
+            mock_warning.assert_called_once()
+            call_args = mock_warning.call_args
+            assert call_args[1]["duration_seconds"] == 2.0
 
-        mock_logger.warning.assert_called_once()
-        call_args = mock_logger.warning.call_args
-        assert call_args[1]["duration_seconds"] == 2.0
-
-    @patch("src.logging.performance.get_logger")
-    def test_log_api_request(self, mock_get_logger):
+    def test_log_api_request(self):
         """Test logging an API request."""
         logger = PerformanceLogger()
 
-        mock_logger = mock_get_logger.return_value
+        with patch.object(logger.logger, "info") as mock_info:
+            logger.log_api_request("GET", "/api/users", 200, 0.1, user_id="user123")
 
-        logger.log_api_request("GET", "/api/users", 200, 0.1, user_id="user123")
-
-        mock_logger.info.assert_called_once()
-        call_args = mock_logger.info.call_args
-        assert call_args[1]["method"] == "GET"
-        assert call_args[1]["path"] == "/api/users"
-        assert call_args[1]["status_code"] == 200
-        assert call_args[1]["user_id"] == "user123"
+            mock_info.assert_called_once()
+            call_args = mock_info.call_args
+            assert call_args[1]["method"] == "GET"
+            assert call_args[1]["path"] == "/api/users"
+            assert call_args[1]["status_code"] == 200
+            assert call_args[1]["user_id"] == "user123"

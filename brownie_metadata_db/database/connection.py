@@ -9,7 +9,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
-from ..certificates import CertificateValidator, cert_config
+from brownie_metadata_db.certificates import CertificateValidator, cert_config
+
 from .config import DatabaseSettings
 
 logger = structlog.get_logger(__name__)
